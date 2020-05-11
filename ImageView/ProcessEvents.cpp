@@ -16,8 +16,10 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ***************************************************************************/
 #include <SDL2/SDL.h>
+ 
 #include "ProcessEvents.h"
 
+ 
 int gPosX = 0;
 int gPosY = 0;
 double gScale = 1.0; 
@@ -62,15 +64,15 @@ static void ShowWindowEvents(SDL_Event* event)
                     event->window.windowID);
             break;
         case SDL_WINDOWEVENT_LEAVE:
-//            SDL_Log("Mouse left window %d", event->window.windowID);
+            SDL_Log("Mouse left window %d", event->window.windowID);
             break;
         case SDL_WINDOWEVENT_FOCUS_GAINED:
-//            SDL_Log("Window %d gained keyboard focus",
-//                    event->window.windowID);
+            SDL_Log("Window %d gained keyboard focus",
+                    event->window.windowID);
             break;
         case SDL_WINDOWEVENT_FOCUS_LOST:
-//            SDL_Log("Window %d lost keyboard focus",
-//                    event->window.windowID);
+            SDL_Log("Window %d lost keyboard focus",
+                    event->window.windowID);
             break;
         case SDL_WINDOWEVENT_CLOSE:
             SDL_Log("Window %d closed", event->window.windowID);
@@ -112,7 +114,7 @@ CommandTable command_table[] = {
 static KeyCommand ProcessKeyCommand(SDL_Keysym key)
 {
     KeyCommand cmd = COMMAND_NONE;
-printf("key=%x mod=%d, SDL_SCANCODE_X=%d\n", key.sym, key.mod, SDL_SCANCODE_X);
+
     switch((key.sym )) {
         case SDLK_x:
         case SDLK_q:
@@ -151,10 +153,10 @@ printf("key=%x mod=%d, SDL_SCANCODE_X=%d\n", key.sym, key.mod, SDL_SCANCODE_X);
             if (key.mod & (KMOD_LSHIFT|KMOD_RSHIFT) )
                 gScale = 0.5;
             else
-                 gScale = 0.1;
+                 gScale = 0.9;
             cmd = COMMAND_SCALE;
             break;
-        case SDLK_PLUS:
+        case 0x3d://"+"
             if (key.mod & (KMOD_LSHIFT|KMOD_RSHIFT) )
                 gScale = 2;
             else
@@ -164,13 +166,126 @@ printf("key=%x mod=%d, SDL_SCANCODE_X=%d\n", key.sym, key.mod, SDL_SCANCODE_X);
         default:
             break;
     }
+    //printf("Key command =%x, 0x%x, 0x%x SDLK_PLUS=%x\n", cmd, key.sym, key.mod,SDLK_PLUS);
     return cmd;
+}
+#include <termio.h>
+
+int GET_CHAR()
+{
+    struct termios tm, tm_old;
+    int fd = 0, ch;
+
+    if ( tcgetattr(fd, &tm)<0 )
+      return -1;
+    tm_old =tm;
+    cfmakeraw(&tm);
+    if (tcsetattr(fd, TCSANOW, &tm) < 0)
+      return -1;
+
+    ch = getchar();
+    if (tcsetattr(fd, TCSANOW, &tm_old) < 0)
+      return -1;
+    return ch;
+}
+KeyCommand GetEventMessage4()
+{
+    KeyCommand cmd = COMMAND_NONE;    
+    const int key = GET_CHAR();
+    if (key == 'q')
+        cmd = COMMAND_EXIT;
+    else if (key == 0x1b) {
+        gPosX = -1;
+        cmd = COMMAND_MOVE;
+    }
+    return cmd;
+}
+KeyCommand GetEventMessage3()
+{
+    KeyCommand cmd = COMMAND_NONE;    
+
+    char line[32];
+ 
+    while (fgets(line, 32, stdin)) {
+        //check hot key
+        switch(line[0]) {
+            case 0x1b: 
+            {
+                if( 0 == memcmp(line+1, "[A", 2))
+                {
+                    gPosY = 1;
+                    cmd = COMMAND_MOVE;
+                } else if ( 0 == memcmp(line+1, "[B", 2))
+                {
+                    gPosY = -1;
+                    cmd = COMMAND_MOVE;
+                } 
+                else if ( 0 == memcmp(line+1, "[D", 2)) { //left arrow
+                    gPosX = -1;
+                    cmd = COMMAND_MOVE;
+                } 
+                else if ( 0 == memcmp(line+1, "[C", 2)) { //right arrow
+                    gPosX = 1;
+                    cmd = COMMAND_MOVE;
+                }
+                break; 
+            }
+            case '=':
+            case '+':
+                gScale = 1.1;
+                cmd = COMMAND_SCALE;
+                break;
+            case '-':
+            case '_':                         
+                gScale = 0.8;
+                cmd = COMMAND_SCALE;
+                break;
+            default:
+                break;
+        }
+        if (cmd != COMMAND_NONE)
+            break;
+        if ( 0 == memcmp(line, "quit", 4)) {
+            cmd = COMMAND_EXIT;
+        } else if ( 0 == memcmp(line, "exit", 4)) {
+            cmd = COMMAND_EXIT;
+        } else {
+            printf ("No command - %s, (%x,%x%c,%x%c)\n", line, line[0], line[1],line[1], line[2],line[2]);
+        }
+        break;
+    }
+    return cmd;
+
 }
 KeyCommand GetEventMessage()
 {
-#define MAX_COMMAND_LENGTH  9
-static char sCommad[256];
-static int keyIndex = 0;
+    KeyCommand cmd = COMMAND_NONE;   
+    SDL_Event e; 
+    SDL_PumpEvents();
+    int r = SDL_PeepEvents(&e, 1, SDL_GETEVENT,0x100, SDL_TEXTINPUT);
+    if (r > 0) {
+	    switch(e.type) {
+        case SDL_MOUSEMOTION: //0x400
+            break;
+	    case SDL_QUIT:      //0x100
+		    return COMMAND_EXIT;
+	    case SDL_KEYDOWN:
+            cmd = ProcessKeyCommand(e.key.keysym);
+            break; 
+        case SDL_WINDOWEVENT: //0x200
+            ShowWindowEvents(&e);
+            break;
+	    case SDL_MOUSEBUTTONDOWN:
+	    default:
+		    break;
+	    }	
+
+    }
+    return cmd;
+}
+KeyCommand GetEventMessage2s()
+{
+ 
     KeyCommand cmd = COMMAND_NONE;    
     SDL_Event e;
     if (SDL_PollEvent(&e)) {
@@ -183,10 +298,10 @@ static int keyIndex = 0;
 	    case SDL_KEYDOWN:
             return ProcessKeyCommand(e.key.keysym);
         case SDL_WINDOWEVENT: //0x200
-            //ShowWindowEvents(&e);
+            ShowWindowEvents(&e);
             break;
 	    case SDL_MOUSEBUTTONDOWN:
-    //		return 0;
+    		return COMMAND_EXIT;
 	    default:
 		    break;
 	    }	

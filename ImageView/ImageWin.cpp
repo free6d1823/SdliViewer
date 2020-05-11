@@ -115,6 +115,8 @@ bool ImageWin::open(const char* path)
 }
 void ImageWin::update()
 {
+    //SDL_RaiseWindow(mhWnd);
+
     if(mValidate) {
         draw();
         mValidate = false;
@@ -186,7 +188,6 @@ void ImageWin::draw()
     } while(0);
  
     if (bDrawImage) {
-printf("draw: %d,%d,%d,%d to %d,%d,%d,%d\n", SrcR.x, SrcR.y, SrcR.w, SrcR.h, DestR.x, DestR.y, DestR.w, DestR.h);
 
 	    SDL_RenderCopy(mhRenderer, mhTexture, &SrcR, &DestR);
 	    //Update the screen

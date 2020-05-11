@@ -59,6 +59,7 @@ void ProcessCommand(KeyCommand cmd)
             gPosX = gPosY = 0;
             break;    
         case COMMAND_SCALE:
+printf("key cod = %d scale=%f\n", cmd, gScale);
             gIw1->scaleImage(gScale);
             gScale = 1.0;
             break;    
@@ -67,6 +68,7 @@ void ProcessCommand(KeyCommand cmd)
        
     }
 }
+int getch(void);
 int main(int argc, char* argv[])
 {
     int ch;
@@ -120,12 +122,7 @@ int main(int argc, char* argv[])
 		fprintf(stderr, "SDL_Init Error: %s", SDL_GetError());
 		return 1;
 	}
-    int dWidth = pImg->width;
-    int dHeight = pImg->height;
-    if (dWidth>1024) {
-        dWidth /= 2;
-        dHeight /=2;
-    }
+
     SDL_DisplayMode dm;
     SDL_GetCurrentDisplayMode(0, &dm);
 
@@ -134,30 +131,18 @@ int main(int argc, char* argv[])
  	    SDL_Quit();
         return -1;
     }
-    
+    gIw1->update();
     KeyCommand cmd = COMMAND_NONE;
-
-gPosX = 100;
-gPosY = 100;
-cmd = COMMAND_MOVE;
-
-int i=1000;
+    
     while ((cmd = GetEventMessage()) != COMMAND_EXIT ) {
-//    for (int i=0; i< 100; i++) {    
-        if (cmd == COMMAND_NONE)
-            SDL_Delay(10);
-        else
+        if (cmd != COMMAND_NONE) {
             ProcessCommand(cmd);
+            gIw1->update();
+        }
+        SDL_FlushEvents(SDL_FIRSTEVENT, SDL_LASTEVENT);
         SDL_Delay(100);
-//gScale = 1.01;
-//cmd = COMMAND_SCALE;
-i--;
-        gIw1->update();
-printf("--- %d ---cmd=%d\n", i, cmd);
-if (i==0)
-    break;
     }
-
+ 
     printf("Exit program!\n");
     if (gIw1)
         delete gIw1;

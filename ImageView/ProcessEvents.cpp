@@ -16,66 +16,56 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ***************************************************************************/
 #include <SDL2/SDL.h>
- 
+#include "common.h"
+#include "ImageWin.h"
 #include "ProcessEvents.h"
 
  
 int gPosX = 0;
 int gPosY = 0;
 double gScale = 1.0; 
-static void ShowWindowEvents(SDL_Event* event)
+static UiCommand CheckWindowEvents(SDL_Event* event)
 {
+    UiCommand cmd = COMMAND_NONE;
        switch (event->window.event) {
         case SDL_WINDOWEVENT_SHOWN:
-            SDL_Log("Window %d shown", event->window.windowID);
-            break;
         case SDL_WINDOWEVENT_HIDDEN:
-            SDL_Log("Window %d hidden", event->window.windowID);
-            break;
         case SDL_WINDOWEVENT_EXPOSED:
-            SDL_Log("Window %d exposed", event->window.windowID);
-            break;
         case SDL_WINDOWEVENT_MOVED:
-            SDL_Log("Window %d moved to %d,%d",
-                    event->window.windowID, event->window.data1,
-                    event->window.data2);
-            break;
         case SDL_WINDOWEVENT_RESIZED:
-            SDL_Log("Window %d resized to %dx%d",
-                    event->window.windowID, event->window.data1,
-                    event->window.data2);
-            break;
-        case SDL_WINDOWEVENT_SIZE_CHANGED:
-            SDL_Log("Window %d size changed to %dx%d",
-                    event->window.windowID, event->window.data1,
-                    event->window.data2);
             break;
         case SDL_WINDOWEVENT_MINIMIZED:
-            SDL_Log("Window %d minimized", event->window.windowID);
-            break;
         case SDL_WINDOWEVENT_MAXIMIZED:
-            SDL_Log("Window %d maximized", event->window.windowID);
-            break;
+        case SDL_WINDOWEVENT_SIZE_CHANGED:
         case SDL_WINDOWEVENT_RESTORED:
-            SDL_Log("Window %d restored", event->window.windowID);
+            if(gWin[0]) gWin[0]->update(true);
+            if(gWin[1]) gWin[1]->update(true);
             break;
         case SDL_WINDOWEVENT_ENTER:
-            SDL_Log("Mouse entered window %d",
-                    event->window.windowID);
+//            SDL_Log("Mouse entered window %d",
+//                    event->window.windowID);
             break;
         case SDL_WINDOWEVENT_LEAVE:
-            SDL_Log("Mouse left window %d", event->window.windowID);
-            break;
+//            SDL_Log("Mouse left window %d", event->window.windowID);
+//            break;
         case SDL_WINDOWEVENT_FOCUS_GAINED:
-            SDL_Log("Window %d gained keyboard focus",
-                    event->window.windowID);
+//            SDL_Log("Window %d gained keyboard focus",
+//                    event->window.windowID);
             break;
         case SDL_WINDOWEVENT_FOCUS_LOST:
-            SDL_Log("Window %d lost keyboard focus",
-                    event->window.windowID);
+//            SDL_Log("Window %d lost keyboard focus",
+//                    event->window.windowID);
             break;
         case SDL_WINDOWEVENT_CLOSE:
-            SDL_Log("Window %d closed", event->window.windowID);
+            {
+                SDL_Window* pWin = SDL_GetWindowFromID(event->window.windowID); 
+                if(gWin[0] && pWin == gWin[0]->getWindow())
+                    cmd = COMMAND_EXIT;
+                if(gWin[1] && pWin == gWin[1]->getWindow()) {
+                    gWin[1] = NULL;
+                    SDL_DestroyWindow(pWin);
+                }
+            }
             break;
 #if SDL_VERSION_ATLEAST(2, 0, 5)
         case SDL_WINDOWEVENT_TAKE_FOCUS:
@@ -86,13 +76,10 @@ static void ShowWindowEvents(SDL_Event* event)
             break;
 #endif
         default:
-            SDL_Log("Window %d got unknown event %d",
-                    event->window.windowID, event->window.event);
             break;
         }
+    return cmd;
 }
-#define CMD_QUIT    "q"
-#define CMD_QUIT2    "x"
 
 typedef struct _CommandTable {
     const char* key;
@@ -102,18 +89,18 @@ typedef struct _CommandTable {
 CommandTable command_table[] = {
     {"q", "Quit"},
     {"X", "Quit"},
-    {"man", "list command manual"},
+    {"?", "list command manual"},
     {"in ", "open input file"},
     {"ref ", "open reference file"},
     {"dif ", "show difference of two file"},
     {"+", "zoom in"},
     {"-", "zoom out"},
-    {"^", "move up"}
+    {"<arrow>", "move picture"}
 };
 
-static KeyCommand ProcessKeyCommand(SDL_Keysym key)
+static UiCommand ProcessKeyCommand(SDL_Keysym key)
 {
-    KeyCommand cmd = COMMAND_NONE;
+    UiCommand cmd = COMMAND_NONE;
 
     switch((key.sym )) {
         case SDLK_x:
@@ -156,110 +143,27 @@ static KeyCommand ProcessKeyCommand(SDL_Keysym key)
                  gScale = 0.9;
             cmd = COMMAND_SCALE;
             break;
-        case 0x3d://"+"
+        case 0x3d://"+" SDLK_PLUS=0x2b
             if (key.mod & (KMOD_LSHIFT|KMOD_RSHIFT) )
                 gScale = 2;
             else
                  gScale = 1.1;
             cmd = COMMAND_SCALE;
             break;
+        case 0x2f: //? SDLK_QUESTION=0x3f
+        case SDLK_QUESTION:
+            cmd = COMMAND_HELP;
+            break;
         default:
             break;
     }
-    //printf("Key command =%x, 0x%x, 0x%x SDLK_PLUS=%x\n", cmd, key.sym, key.mod,SDLK_PLUS);
+    //printf("Key command =%x, 0x%x, 0x%x SDLK_QUESTION=%x\n", cmd, key.sym, key.mod,SDLK_QUESTION);
     return cmd;
 }
-#include <termio.h>
 
-int GET_CHAR()
+UiCommand GetEventMessage()
 {
-    struct termios tm, tm_old;
-    int fd = 0, ch;
-
-    if ( tcgetattr(fd, &tm)<0 )
-      return -1;
-    tm_old =tm;
-    cfmakeraw(&tm);
-    if (tcsetattr(fd, TCSANOW, &tm) < 0)
-      return -1;
-
-    ch = getchar();
-    if (tcsetattr(fd, TCSANOW, &tm_old) < 0)
-      return -1;
-    return ch;
-}
-KeyCommand GetEventMessage4()
-{
-    KeyCommand cmd = COMMAND_NONE;    
-    const int key = GET_CHAR();
-    if (key == 'q')
-        cmd = COMMAND_EXIT;
-    else if (key == 0x1b) {
-        gPosX = -1;
-        cmd = COMMAND_MOVE;
-    }
-    return cmd;
-}
-KeyCommand GetEventMessage3()
-{
-    KeyCommand cmd = COMMAND_NONE;    
-
-    char line[32];
- 
-    while (fgets(line, 32, stdin)) {
-        //check hot key
-        switch(line[0]) {
-            case 0x1b: 
-            {
-                if( 0 == memcmp(line+1, "[A", 2))
-                {
-                    gPosY = 1;
-                    cmd = COMMAND_MOVE;
-                } else if ( 0 == memcmp(line+1, "[B", 2))
-                {
-                    gPosY = -1;
-                    cmd = COMMAND_MOVE;
-                } 
-                else if ( 0 == memcmp(line+1, "[D", 2)) { //left arrow
-                    gPosX = -1;
-                    cmd = COMMAND_MOVE;
-                } 
-                else if ( 0 == memcmp(line+1, "[C", 2)) { //right arrow
-                    gPosX = 1;
-                    cmd = COMMAND_MOVE;
-                }
-                break; 
-            }
-            case '=':
-            case '+':
-                gScale = 1.1;
-                cmd = COMMAND_SCALE;
-                break;
-            case '-':
-            case '_':                         
-                gScale = 0.8;
-                cmd = COMMAND_SCALE;
-                break;
-            default:
-                break;
-        }
-        if (cmd != COMMAND_NONE)
-            break;
-        if ( 0 == memcmp(line, "quit", 4)) {
-            cmd = COMMAND_EXIT;
-        } else if ( 0 == memcmp(line, "exit", 4)) {
-            cmd = COMMAND_EXIT;
-        } else {
-            printf ("No command - %s, (%x,%x%c,%x%c)\n", line, line[0], line[1],line[1], line[2],line[2]);
-        }
-        break;
-    }
-    return cmd;
-
-}
-KeyCommand GetEventMessage()
-{
-    KeyCommand cmd = COMMAND_NONE;   
+    UiCommand cmd = COMMAND_NONE;   
     SDL_Event e; 
     SDL_PumpEvents();
     int r = SDL_PeepEvents(&e, 1, SDL_GETEVENT,0x100, SDL_TEXTINPUT);
@@ -273,7 +177,7 @@ KeyCommand GetEventMessage()
             cmd = ProcessKeyCommand(e.key.keysym);
             break; 
         case SDL_WINDOWEVENT: //0x200
-            ShowWindowEvents(&e);
+            cmd = CheckWindowEvents(&e);
             break;
 	    case SDL_MOUSEBUTTONDOWN:
 	    default:
@@ -283,29 +187,29 @@ KeyCommand GetEventMessage()
     }
     return cmd;
 }
-KeyCommand GetEventMessage2s()
+void ProcessCommand(UiCommand cmd)
 {
- 
-    KeyCommand cmd = COMMAND_NONE;    
-    SDL_Event e;
-    if (SDL_PollEvent(&e)) {
+    switch (cmd)
+    {
+        case COMMAND_MOVE:
+            if(gWin[0]) gWin[0]->moveImage(gPosX, gPosY);
+            if(gWin[1]) gWin[1]->moveImage(gPosX, gPosY);
 
-	    switch(e.type) {
-        case SDL_MOUSEMOTION: //0x400
-            break;
-	    case SDL_QUIT:      //0x100
-		    return COMMAND_EXIT;
-	    case SDL_KEYDOWN:
-            return ProcessKeyCommand(e.key.keysym);
-        case SDL_WINDOWEVENT: //0x200
-            ShowWindowEvents(&e);
-            break;
-	    case SDL_MOUSEBUTTONDOWN:
-    		return COMMAND_EXIT;
-	    default:
-		    break;
-	    }	
-    }	
-	return cmd;
+            gPosX = gPosY = 0;
+            break;    
+        case COMMAND_SCALE:
+            if(gWin[0]) gWin[0]->scaleImage(gScale);
+            if(gWin[1]) gWin[1]->scaleImage(gScale);
 
+            gScale = 1.0;
+            break;
+        case COMMAND_HELP:
+            for (size_t i=0; i< sizeof(command_table)/sizeof(command_table[0]); i++ ) {
+                printf("%s\t%s\n", command_table[i].key, command_table[i].description);
+            }    
+        default:
+            break;
+       
+    }
 }
+

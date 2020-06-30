@@ -19,6 +19,7 @@
 #define COMMON_H
 
 #include <pixfmt.h>
+
 typedef struct _ImageFormat {
     AVPixelFormat colorspace; //AV_PIX_FMT_RGB24, AV_PIX_FMT_RGBA, AV_PIX_FMT_YUV420P, AV_PIX_FMT_YUV422P
     int width;
@@ -37,4 +38,8 @@ ImageFormat* CreateImageFile(const char* name, int width, int height, AVPixelFor
 bool DistroyImage(ImageFormat* pImage);
 void* ConvertImageToRgb32(ImageFormat* pImage);
 AVPixelFormat GetFormateByName(const char* name);
+
+class ImageWin;
+extern ImageWin* gWin[2];/* global windows */
+
 #endif //COMMON_H

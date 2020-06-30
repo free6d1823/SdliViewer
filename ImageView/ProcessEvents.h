@@ -21,13 +21,16 @@ extern int gPosX;
 extern int gPosY;
 extern double gScale; 
 
-typedef enum _KeyCommand {
+/* user input commands */
+typedef enum _UiCommand {
     COMMAND_EXIT = -1,
     COMMAND_NONE = 0,
     COMMAND_MOVE = 1,
     COMMAND_SCALE = 2,
     COMMAND_OPENR_REF = 3,
     COMMAND_DIFF = 4, /*show different window */
-}KeyCommand;
+    COMMAND_HELP = 5, /* show commands */
+}UiCommand;
 
-KeyCommand GetEventMessage();
+UiCommand GetEventMessage();
+void ProcessCommand(UiCommand cmd);

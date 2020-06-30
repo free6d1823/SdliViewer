@@ -262,7 +262,7 @@ void Yuy422pToRgb32(unsigned char* pYuv, int width, int stride, int height, unsi
 /* convert string to ImageFormat code */
 AVPixelFormat GetFormateByName(const char* name)
 {
-    if (strcasecmp (name, "yuyv") == 0)
+    if (strncasecmp (name, "yuyv", 4) == 0)
         return AV_PIX_FMT_YUYV422;
     if (strcasecmp (name, "yvyu") == 0)
         return AV_PIX_FMT_YVYU422;
@@ -270,9 +270,9 @@ AVPixelFormat GetFormateByName(const char* name)
         return AV_PIX_FMT_UYVY422;
     if (strcasecmp (name, "i422") == 0)
         return AV_PIX_FMT_YUV422P;
-    if (strcasecmp (name, "i420") == 0)
+    if (strncasecmp (name, "i420", 4) == 0)
         return AV_PIX_FMT_YUV420P;
-    if (strcasecmp (name, "rgba") == 0)
+    if (strncasecmp (name, "rgba", 4) == 0)
         return AV_PIX_FMT_RGBA;
     if (strcasecmp (name, "rgb") == 0)
         return AV_PIX_FMT_BGR24;

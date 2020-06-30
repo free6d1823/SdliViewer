@@ -18,9 +18,10 @@
 #include <stdio.h>
 #include "ImageWin.h"
 
-ImageWin* ImageWin::CreateImageWin(const char* name, int x, int y, int width, int height)
+ImageWin* ImageWin::CreateImageWin(const char* name)
 {
-    SDL_Window* hWnd = SDL_CreateWindow(name, x, y, width, height, SDL_WINDOW_INPUT_GRABBED|SDL_WINDOW_RESIZABLE);
+    int flags = SDL_WINDOW_HIDDEN|SDL_WINDOW_RESIZABLE;
+    SDL_Window* hWnd = SDL_CreateWindow(name, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 640, 480, flags);
     if (hWnd == NULL){
 	    return NULL;
     }
@@ -40,6 +41,25 @@ ImageWin::ImageWin():
     mZoomFactor = 1.0;
     mpImage = NULL;
     mValidate = false;
+}
+ImageWin* ImageWin::CreateWinByFile(const char* name, int width, int height, AVPixelFormat fmt)
+{
+    ImageFormat* pImg = NULL;
+    if (AV_PIX_FMT_NONE == fmt) {
+        pImg = CreateImageFileByName(name);
+    } else {
+        pImg = CreateImageFile(name, width, height, fmt);
+    }
+    if (!pImg) {
+        fprintf(stderr, "Failed to load file %s!\n", name);
+        return NULL;
+    } 
+    ImageWin* pWin = CreateImageWin(name);   
+    if (pWin) 
+        pWin->setImage(pImg);
+    else
+        DistroyImage(pImg);
+    return pWin;    
 }
 
 ImageWin::~ImageWin()
@@ -106,6 +126,10 @@ bool ImageWin::setImage(ImageFormat* pImage)
     mRcDisplay.w = int( (double)mpImage->width*mZoomFactor);
     mRcDisplay.h = int( (double)mpImage->height*mZoomFactor);
     mValidate = true;
+
+    SDL_SetWindowSize(mhWnd,  mRcDisplay.w, mRcDisplay.h);
+    SDL_ShowWindow(mhWnd);
+
     return (mhTexture != NULL);
 }
 bool ImageWin::open(const char* path)
@@ -113,11 +137,11 @@ bool ImageWin::open(const char* path)
 
     return (mhTexture != NULL);
 }
-void ImageWin::update()
+void ImageWin::update(bool bForce)
 {
     //SDL_RaiseWindow(mhWnd);
 
-    if(mValidate) {
+    if(bForce || mValidate) {
         draw();
         mValidate = false;
     }
@@ -130,10 +154,10 @@ void ImageWin::moveImage(int dx, int dy)
     mValidate = true;
 }
 
-void ImageWin::scaleImage(double scale)
+void ImageWin::scaleImage(double dScale)
 {
-    if (mpImage && scale > 0.01) {
-        mZoomFactor = mZoomFactor * scale;
+    if (mpImage && dScale > 0.01) {
+        mZoomFactor = mZoomFactor * dScale;
         mRcDisplay.w = mpImage->width * mZoomFactor;
         mRcDisplay.h = mpImage->height * mZoomFactor;;
         mValidate = true;

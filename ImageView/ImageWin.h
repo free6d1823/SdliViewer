@@ -23,16 +23,18 @@
 class ImageWin
 {
 public:
-    static ImageWin* CreateImageWin(const char* name, int x, int y, int width, int height);
+    static ImageWin* CreateImageWin(const char* name);   
+    static ImageWin* CreateWinByFile(const char* name, int width, int height, AVPixelFormat fmt);
 	ImageWin();
 	~ImageWin();
     SDL_Window* getWindow() {return mhWnd;}
     bool open(const char* path);
     bool setImage(ImageFormat* pImage);
     void moveImage(int dx, int dy);
-    void scaleImage(double scale);
+    void scaleImage(double dScale);
+    double getScaleFactor() { return mZoomFactor;}
 	void draw();
-    void update();
+    void update(bool bForce=false);
 protected:
     void freeImage();
 private:

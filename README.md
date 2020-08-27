@@ -6,3 +6,8 @@ Install SDL2-2.0.12
 make
 - Usage:
 ./ivm [options] input_file
+
+Test:
+YUYV422 OK
+RGB24 OK
+I420 OK

@@ -22,6 +22,33 @@
 
 #include "common.h"
 
+
+void Yuv420p_Rgb32(unsigned char* pYuv, int width, int stride, int height, unsigned char* pRgb);
+void Nv12_Rgb32(unsigned char* pYuv, int width, int stride, int height, unsigned char* pRgb);
+void Nv21_Rgb32(unsigned char* pYuv, int width, int stride, int height, unsigned char* pRgb);
+void Yuyv422_Rgb32(unsigned char* pYuv, int width, int stride, int height, unsigned char* pRgb);
+void Yvyu422_Rgb32(unsigned char* pYuv, int width, int stride, int height, unsigned char* pRgb);
+void Uyvy422_Rgb32(unsigned char* pYuv, int width, int stride, int height, unsigned char* pRgb);
+void Rgba_Rgb32(unsigned char* pYuv, int width, int stride, int height, unsigned char* pRgb);
+void Bgra_Rgb32(unsigned char* pYuv, int width, int stride, int height, unsigned char* pRgb);
+void Rgb24_Rgb32(unsigned char* pYuv, int width, int stride, int height, unsigned char* pRgb);
+void Bgr24_Rgb32(unsigned char* pYuv, int width, int stride, int height, unsigned char* pRgb);
+
+PixelFormatTable sPixelFormatTable[] = {
+	{AV_PIX_FMT_YUV420P, "0", "YUV420 plannar, I420", Yuv420p_Rgb32},
+	{AV_PIX_FMT_NV12, "1", "YUV420 semi-plannar UV NV12", Nv12_Rgb32},
+	{AV_PIX_FMT_NV21, "2", "YUV420 semi-plannar VU NV21", Nv21_Rgb32},
+	{AV_PIX_FMT_YUYV422, "3", "YUYV422 YUYV packet", Yuyv422_Rgb32},
+	{AV_PIX_FMT_UYVY422, "4", "UYVY420 UYVY packet", Uyvy422_Rgb32},
+	{AV_PIX_FMT_RGBA, "11", "packed RGBA 8:8:8:8, 32bpp", Rgba_Rgb32},
+	{AV_PIX_FMT_BGRA, "12", "packed BGRA 8:8:8:8, 32bpp", Bgra_Rgb32},
+	{AV_PIX_FMT_RGB24, "21", "RGB24", Rgb24_Rgb32},
+	{AV_PIX_FMT_BGR24, "22", "BGR24", Bgr24_Rgb32},
+	{AV_PIX_FMT_YVYU422, "23", "YVYU422 YVYU packet", Yvyu422_Rgb32}
+
+};
+
+
 #define CLIP(X) ( (X) > 255 ? 255 : (X) < 0 ? 0 : X)
 
 
@@ -101,7 +128,7 @@ static void YuyvToRgb32(unsigned char* pYuv, int width, int stride, int height, 
 
     }
 }
-void Rgb24ToRgb32(unsigned char* pYuv, int width, int stride, int height, unsigned char* pRgb, AVPixelFormat fmt)
+void Rgb24ToRgb32(unsigned char* pYuv, int width, int stride, int height, unsigned char* pRgb, int fmt)
 {
     //YVYU - format
     int nBps = width*4;
@@ -110,13 +137,13 @@ void Rgb24ToRgb32(unsigned char* pYuv, int width, int stride, int height, unsign
     unsigned char* pY3;
 
     switch (fmt) {
-        case AV_PIX_FMT_BGR24:
+        case 1: //BGR
         pY3 = pYuv;
         pY2 = pY3+1; 
         pY1 = pY2+1; 
         break;
 
-        case AV_PIX_FMT_RGB24:
+        case 0: //RGB
         default:
         pY1 = pYuv;
         pY2 = pY1+1; 
@@ -145,7 +172,7 @@ void Rgb24ToRgb32(unsigned char* pYuv, int width, int stride, int height, unsign
 }
 
 
-void Yuy420pToRgb32(unsigned char* pYuv, int width, int stride, int height, unsigned char* pRgb, bool uFirst)
+void Yuv420pToRgb32(unsigned char* pYuv, int width, int stride, int height, unsigned char* pRgb, bool uFirst)
 {
     //YVU420 - format 4Y:1V:1U
     int nBps = width*4;
@@ -259,36 +286,20 @@ void Yuy422pToRgb32(unsigned char* pYuv, int width, int stride, int height, unsi
         pLine1 += nBps;
     }
 }
-/* convert string to ImageFormat code */
-AVPixelFormat GetFormateByName(const char* name)
-{
-    if (strncasecmp (name, "yuyv", 4) == 0)
-        return AV_PIX_FMT_YUYV422;
-    if (strcasecmp (name, "yvyu") == 0)
-        return AV_PIX_FMT_YVYU422;
-    if (strcasecmp (name, "uyvy") == 0)
-        return AV_PIX_FMT_UYVY422;
-    if (strcasecmp (name, "i422") == 0)
-        return AV_PIX_FMT_YUV422P;
-    if (strncasecmp (name, "i420", 4) == 0)
-        return AV_PIX_FMT_YUV420P;
-    if (strncasecmp (name, "rgba", 4) == 0)
-        return AV_PIX_FMT_RGBA;
-    if (strcasecmp (name, "rgb") == 0)
-        return AV_PIX_FMT_BGR24;
-    if (strcasecmp (name, "rgb") == 0)
-        return AV_PIX_FMT_BGR24;
-    return AV_PIX_FMT_NONE;
-}
+
 void* ConvertImageToRgb32(ImageFormat* pImage)
 {
     unsigned char* pRgb = NULL;
-    if (pImage->colorspace == AV_PIX_FMT_RGBA)
+    if (GetAVPixelFormat(pImage->colorspace) == AV_PIX_FMT_RGBA)
         return pImage->data;
 
     pRgb = (unsigned char*) malloc(pImage->width* 4* pImage->height);
     if (!pRgb)
         return NULL;
+	if(sPixelFormatTable[pImage->colorCode].fnConv)
+		sPixelFormatTable[pImage->colorCode].fnConv((unsigned char*)pImage->data, 
+				pImage->width, pImage->stride, pImage->height, pRgb);
+/*
     switch(pImage->colorspace)
     {
         case AV_PIX_FMT_RGB24:
@@ -297,7 +308,7 @@ void* ConvertImageToRgb32(ImageFormat* pImage)
                     pImage->height, pRgb, pImage->colorspace);
             break;
          case AV_PIX_FMT_YUV420P:
-            Yuy420pToRgb32((unsigned char*)pImage->data, pImage->width, pImage->stride,
+            Yuv420pToRgb32((unsigned char*)pImage->data, pImage->width, pImage->stride,
                     pImage->height, pRgb, true);
             break;
          case AV_PIX_FMT_YUV422P:
@@ -313,7 +324,7 @@ void* ConvertImageToRgb32(ImageFormat* pImage)
         default:
         break;
     }
-
+*/
     return pRgb;
 }
 static ImageFormat* LoadY4MFile(const char* filename)
@@ -365,17 +376,17 @@ static ImageFormat* LoadY4MFile(const char* filename)
                 {
                    char* p2 = p1+1;
                    if ( strcmp(p2, "444") == 0) {
-                        pImg->colorspace = AV_PIX_FMT_YUV444P;
+                        pImg->colorCode = GetIndexByAVPixelFormat(AV_PIX_FMT_YUV444P);
                         pImg->bitsPerPixel = 24;
                         pImg->stride = ((pImg->width+3)>>2)<<2;
                         pImg->length = pImg->stride * pImg->height * 3;
                    } else if (strcmp(p2, "422") == 0) {
-                        pImg->colorspace = AV_PIX_FMT_YUV422P;
+                        pImg->colorCode = GetIndexByAVPixelFormat(AV_PIX_FMT_YUV422P);
                         pImg->bitsPerPixel = 16;
                         pImg->stride = ((pImg->width+3)>>2)<<2;
                         pImg->length = pImg->stride * pImg->height * 2;
                    } else  { //420
-                        pImg->colorspace = AV_PIX_FMT_YUV420P;
+                        pImg->colorCode = GetIndexByAVPixelFormat(AV_PIX_FMT_YUV420P);
                         pImg->bitsPerPixel = 12;
                         pImg->stride = ((pImg->width+3)>>2)<<2;
                         pImg->length = pImg->stride * pImg->height * 3/2;
@@ -442,34 +453,33 @@ printf("filenae=%s, ext=%s,\n", filename, ext);
         if (width <= 0 || height <=0) {
             return NULL;
         }
-        AVPixelFormat fmt = AV_PIX_FMT_NONE;
-
-        if (strcmp(ext, ".yuv") == 0)
-            fmt = AV_PIX_FMT_YUYV422;
+		int colorIndex = -1;
+        if (strcmp(ext, ".yuyv") == 0)
+            colorIndex = GetIndexByAVPixelFormat(AV_PIX_FMT_YUYV422);
         else if(strcmp(ext, ".rgba") == 0){
-           fmt = AV_PIX_FMT_RGBA;  
+           colorIndex = GetIndexByAVPixelFormat(AV_PIX_FMT_RGBA);  
         }
-        else if (strcmp(ext, ".420p") == 0)
-            fmt = AV_PIX_FMT_YUV420P;
+        else if (strcmp(ext, ".yuv") == 0)
+            colorIndex = GetIndexByAVPixelFormat(AV_PIX_FMT_YUV420P);
 
         else if(strcmp(ext, ".rgb") == 0)
-            fmt = AV_PIX_FMT_RGB24;
+            colorIndex = GetIndexByAVPixelFormat(AV_PIX_FMT_RGB24);
         else if(strcmp(ext, ".bgr") == 0)
-            fmt = AV_PIX_FMT_BGR24;
-        if (fmt != AV_PIX_FMT_NONE)
-            return CreateImageFile(filename, width, height, fmt);
+            colorIndex = GetIndexByAVPixelFormat(AV_PIX_FMT_BGR24);
+        if (colorIndex >=0)
+            return CreateImageFile(filename, width, height, colorIndex);
     }
     return NULL;
 }
-ImageFormat* CreateImageFile(const char* name, int width, int height, AVPixelFormat fmt)
+ImageFormat* CreateImageFile(const char* name, int width, int height, int colorIndex)
 {
     ImageFormat* pImg = (ImageFormat*) malloc(sizeof(ImageFormat));
     memset(pImg, 0, sizeof(ImageFormat));
-    pImg->colorspace = fmt;
+    pImg->colorCode = colorIndex;
     pImg->width = width;
     pImg->height = height;
     pImg->fps = 1;
-    switch(fmt) {
+    switch(sPixelFormatTable[colorIndex].fmt) {
     case AV_PIX_FMT_YVYU422:
     case AV_PIX_FMT_YUYV422:
     case AV_PIX_FMT_UYVY422:
@@ -511,4 +521,74 @@ bool DistroyImage(ImageFormat* pImage)
     free (pImage);
     return true;
 }
+/* pixel format */
+
+void Yuv420p_Rgb32(unsigned char* pYuv, int width, int stride, int height, unsigned char* pRgb)
+{
+	Yuv420pToRgb32(pYuv, width, stride, height, pRgb, true);
+}
+void Nv12_Rgb32(unsigned char* pYuv, int width, int stride, int height, unsigned char* pRgb)
+{
+}
+void Nv21_Rgb32(unsigned char* pYuv, int width, int stride, int height, unsigned char* pRgb)
+{
+}
+void Yuyv422_Rgb32(unsigned char* pYuv, int width, int stride, int height, unsigned char* pRgb)
+{
+	YuyvToRgb32(pYuv, width, stride, height, pRgb, AV_PIX_FMT_YUYV422);
+
+}
+void Yvyu422_Rgb32(unsigned char* pYuv, int width, int stride, int height, unsigned char* pRgb)
+{
+	YuyvToRgb32(pYuv, width, stride, height, pRgb, AV_PIX_FMT_YVYU422);
+}
+void Uyvy422_Rgb32(unsigned char* pYuv, int width, int stride, int height, unsigned char* pRgb)
+{
+	YuyvToRgb32(pYuv, width, stride, height, pRgb, AV_PIX_FMT_UYVY422);
+}
+void Rgba_Rgb32(unsigned char* pYuv, int width, int stride, int height, unsigned char* pRgb)
+{
+	memcpy(pRgb, pYuv, stride* width);
+}
+void Bgra_Rgb32(unsigned char* pYuv, int width, int stride, int height, unsigned char* pRgb)
+{
+}
+void Rgb24_Rgb32(unsigned char* pYuv, int width, int stride, int height, unsigned char* pRgb)
+{
+	Rgb24ToRgb32(pYuv, width, stride, height, pRgb, 0);
+}
+void Bgr24_Rgb32(unsigned char* pYuv, int width, int stride, int height, unsigned char* pRgb)
+{
+	Rgb24ToRgb32(pYuv, width, stride, height, pRgb, 1);
+}
+
+AVPixelFormat GetAVPixelFormat(int color)
+{
+	if (color <0 || color >= (int)(sizeof(sPixelFormatTable)/sizeof(PixelFormatTable)))
+		return AV_PIX_FMT_NONE;
+	return sPixelFormatTable[color].fmt;
+}
+int GetIndexByAVPixelFormat(AVPixelFormat fmt)
+{
+	for (unsigned int i=0; i<sizeof(sPixelFormatTable)/sizeof(PixelFormatTable); i++ ) {
+		if ( sPixelFormatTable[i].fmt  == fmt)
+			return (int)i;
+	}
+	return -1;
+}
+int GetPixelFormat(char* key)
+{
+	for (unsigned int i=0; i<sizeof(sPixelFormatTable)/sizeof(PixelFormatTable); i++ ) {
+		if (memcmp(sPixelFormatTable[i].key, key, sizeof(sPixelFormatTable[i].key)) == 0)
+			return (int)i;
+	}
+	return -1;
+}
+void PrintPixelFormat(const char* indent)
+{
+	for (unsigned int i=0; i<sizeof(sPixelFormatTable)/sizeof(PixelFormatTable); i++ ) {
+		printf("%s%s\t%s\n", indent, sPixelFormatTable[i].key, sPixelFormatTable[i].desc);	
+	}
+}
+
 

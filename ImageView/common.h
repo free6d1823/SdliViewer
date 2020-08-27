@@ -20,7 +20,19 @@
 
 #include <pixfmt.h>
 
+typedef void(*ColorConvertFunc)(unsigned char* pYuv, int width, int stride, int height, unsigned char* pRgb);
+
+typedef struct _PixelFormatTb {
+	AVPixelFormat fmt;
+	const char     key[8];
+    const char* desc;
+	ColorConvertFunc fnConv;
+}PixelFormatTable;
+
+int GetPixelFormat(char* key);
+
 typedef struct _ImageFormat {
+	int colorCode; /* index of PixelFormatTable */
     AVPixelFormat colorspace; //AV_PIX_FMT_RGB24, AV_PIX_FMT_RGBA, AV_PIX_FMT_YUV420P, AV_PIX_FMT_YUV422P
     int width;
     int height;
@@ -33,11 +45,15 @@ typedef struct _ImageFormat {
     ////
 }ImageFormat;
 
+void PrintPixelFormat(const char* indent);
+AVPixelFormat GetAVPixelFormat(int intcolor);
+int GetPixelFormat(char* key);
+int GetIndexByAVPixelFormat(AVPixelFormat fmt);
+
 ImageFormat* CreateImageFileByName(const char* filename);
-ImageFormat* CreateImageFile(const char* name, int width, int height, AVPixelFormat fmt);
+ImageFormat* CreateImageFile(const char* name, int width, int height, int colorIndex);
 bool DistroyImage(ImageFormat* pImage);
 void* ConvertImageToRgb32(ImageFormat* pImage);
-AVPixelFormat GetFormateByName(const char* name);
 
 class ImageWin;
 extern ImageWin* gWin[2];/* global windows */

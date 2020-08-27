@@ -42,14 +42,17 @@ ImageWin::ImageWin():
     mpImage = NULL;
     mValidate = false;
 }
-ImageWin* ImageWin::CreateWinByFile(const char* name, int width, int height, AVPixelFormat fmt)
+ImageWin* ImageWin::CreateWinByFile(const char* name, int width, int height, int color)
 {
     ImageFormat* pImg = NULL;
+	AVPixelFormat fmt = GetAVPixelFormat(color);
+printf("nam=%s fmt=%d color =%d\n", name, fmt, color);
     if (AV_PIX_FMT_NONE == fmt) {
         pImg = CreateImageFileByName(name);
     } else {
-        pImg = CreateImageFile(name, width, height, fmt);
+        pImg = CreateImageFile(name, width, height, color);
     }
+
     if (!pImg) {
         fprintf(stderr, "Failed to load file %s!\n", name);
         return NULL;

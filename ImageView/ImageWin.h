@@ -24,7 +24,7 @@ class ImageWin
 {
 public:
     static ImageWin* CreateImageWin(const char* name);   
-    static ImageWin* CreateWinByFile(const char* name, int width, int height, AVPixelFormat fmt);
+    static ImageWin* CreateWinByFile(const char* name, int width, int height, int color);
 	ImageWin();
 	~ImageWin();
     SDL_Window* getWindow() {return mhWnd;}

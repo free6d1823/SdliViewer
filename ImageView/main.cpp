@@ -24,18 +24,9 @@ static void usage(char* name)
     printf("\t\t Height of the image, in pixel.\n\n");
     printf("\t-s FPS\n");
     printf("\t\t display frequency, frames per second.\n\n");
-    printf("\t-f FORMAT\n");
+    printf("\t-c COLOR_ID\n");
     printf("\t\t Format of the image.\n");
-    printf("\t\t - \"yuyv\"\tYUYV 422 8bit packet mode\n");
-    printf("\t\t - \"yvyu\"\tYVYU 422 8bit packet mode\n");
-    printf("\t\t - \"uyvy\"\tUYVY 422 8bit packet mode\n");
-    printf("\t\t - \"i422\"\tYUV 422 8bit plant mode\n");  
-    printf("\t\t - \"i420\"\tYUV 420 8bit plant mode\n");  
-    printf("\t\t - \"nv12\"\tY-UV 420 half-plant mode\n\n");  
-
-    printf("\t\t - \"rgba\"\tRGBA 32 bits packet mode\n");
-    printf("\t\t - \"rgb\"\tRGB 24 bits packet mode\n");
-    printf("\t\t - \"bgr\"\tRGB 24 bits packet mode\n");
+	PrintPixelFormat("\t\t - ");
     printf("\n\n");
 }
 
@@ -53,7 +44,8 @@ int main(int argc, char* argv[])
     int ch;
     int width = 0;;
     int height = 0;
-    AVPixelFormat fmt = AV_PIX_FMT_NONE;
+	int colorIndex = -1;
+ 
     char* image1Filename = NULL;
     Uint32 tStart;
     Uint32 tDelay = 30;
@@ -69,19 +61,20 @@ int main(int argc, char* argv[])
         case 'h':
             height = atoi (optarg);
             break;
-        case 'f':
-            fmt = GetFormateByName(optarg);
-            printf("fmt=%s %d\n", optarg, fmt);
-            break;
+		case 'c':
+			colorIndex = GetPixelFormat(optarg);
+			break;
+
         default:
             usage(argv[0]);
             exit(-1);
         }   
     }
 
+ 
+
     if(optind<argc)
         image1Filename = argv[optind];
-
     if ( image1Filename == 0) {
         usage(argv[0]);
         exit(-1);
@@ -91,7 +84,8 @@ int main(int argc, char* argv[])
 		return 1;
 	}
 
-    ImageWin* gIw1 = ImageWin::CreateWinByFile(image1Filename, width, height, fmt);
+    ImageWin* gIw1 = ImageWin::CreateWinByFile(image1Filename, width, height, colorIndex);
+
     if (!gIw1){
  	    SDL_Quit();
         return -1;

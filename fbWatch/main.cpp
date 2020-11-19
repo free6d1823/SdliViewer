@@ -105,11 +105,11 @@ void* CreateBufferFromHex(int* pLen)
 	void* pBuffer = malloc(len);
 	*pLen = len;
 	int plan = GetImagePlanNumbers(sysConf.srcFormat);
-	unsigned int* p = (unsigned int *)pBuffer;
+	unsigned char* pb = (unsigned char *)pBuffer;
 	for(int i=0; i< plan; i++) {
 		int n = GetImagePlanLength(i, sysConf.srcWidth, sysConf.srcHeight, sysConf.srcFormat);
 		FILE* fp = fopen(sysConf.plana[i], "rb");
-		
+		unsigned char* p = pb;
 		if(fp) {
 			char line[256];
 			//unsigned char data[4];
@@ -120,13 +120,18 @@ void* CreateBufferFromHex(int* pLen)
 					continue;
 				Hex2Bin32(line, (unsigned char*) p);
 				
-				p++;
+				p+=4;
 				processed += 4;
 				if (processed >= n)
 					break;
 			}
 			fclose(fp);
+			        printf("--- pp = %d\n", processed);
+
+		} else {
+			fprintf(stderr, "Failed to open file %s\n", sysConf.plana[i]);
 		}
+		pb += n;
 	}
 	return pBuffer;
 }
@@ -209,8 +214,6 @@ void ReloadImage()
  
 	}else if(sysConf.raw == RF_HEX2) {
  		buffer = CreateBufferFromHex2(&length);
- 		unsigned char* pp = (unsigned char*) buffer;
-
 		if (length > 0)
 			pImage = CreateImageBuffer(buffer, length, sysConf.srcWidth, sysConf.srcHeight, sysConf.srcFormat);
  

@@ -31,6 +31,7 @@ public:
     SDL_Window* getWindow() {return mhWnd;}
     bool open(const char* path);
 	bool createImage(int colorIndex, int defColor);
+	bool putImage(int x, int y, ImageFormat* pImage);
     bool setImage(ImageFormat* pImage);
     void moveImage(int dx, int dy);
     void scaleImage(double dScale);

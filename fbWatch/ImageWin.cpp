@@ -119,6 +119,61 @@ void ImageWin::freeImage()
         mpRgba = NULL;
     }
 }
+bool ImageWin::putImage(int x, int y, ImageFormat* pImage)
+{
+	if (!mpImage || !mpRgba)
+		return false;
+	unsigned char* pSource = (unsigned char*) ConvertImageToRgb32(pImage);
+	if (!pSource)
+		return false;
+	unsigned char* pDest = (unsigned char*)mpRgba + x*4 + y*mpImage->stride;
+	int ye = y + pImage->height;
+	if (ye > mpImage->height) ye = mpImage->height;
+	int xe = x + pImage->width;
+	if (xe > mpImage->width) xe = mpImage->width;
+	unsigned char* pt = pDest;
+	unsigned char* ps = pSource;
+
+	xe = (xe-x)*4;
+	int desStride = mpImage->width*4;
+	int srcStride = pImage->width*4;
+	printf("stride %d, %d, xe=%d\n", mpImage->stride, pImage->stride,xe);
+	for (int i= y; i<ye; i++ ) {
+		memcpy(pt, ps, xe);
+		pt += desStride;
+		ps += srcStride;
+	}	
+	free(pSource);
+	//update surface
+	Uint32 rmask, gmask, bmask, amask;
+    rmask = 0x000000ff;
+    gmask = 0x0000ff00;
+    bmask = 0x00ff0000;
+    amask = 0xff000000;
+
+    SDL_Surface* surf = SDL_CreateRGBSurfaceFrom(mpRgba, pImage->width, pImage->height,
+            32, 4*pImage->width, rmask, gmask, bmask, amask);
+    if (surf == NULL) {
+        SDL_Log("Creating surface failed: %s", SDL_GetError());
+        return false;
+    }
+    if (mhTexture)
+        SDL_DestroyTexture(mhTexture);
+    mhTexture = SDL_CreateTextureFromSurface(mhRenderer, surf);
+    SDL_FreeSurface(surf);
+
+    /* reset display area */
+    mRcDisplay.x = mRcDisplay.y = 0;
+    mRcDisplay.w = int( (double)mpImage->width*mZoomFactor);
+    mRcDisplay.h = int( (double)mpImage->height*mZoomFactor);
+    mValidate = true;
+
+    SDL_SetWindowSize(mhWnd,  mRcDisplay.w, mRcDisplay.h);
+    SDL_ShowWindow(mhWnd);
+
+    return (mhTexture != NULL);
+}
+
 bool ImageWin::setImage(ImageFormat* pImage)
 {
     freeImage();

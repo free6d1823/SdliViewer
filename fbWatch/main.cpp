@@ -222,7 +222,9 @@ void ReloadImage()
 		pImage = CreateImageFile(sysConf.srcFile, sysConf.srcWidth, sysConf.srcHeight, sysConf.srcFormat);
 	}
 	if (pImage) {
-		gWin->setImage(pImage);
+		//gWin->setImage(pImage);
+		gWin->putImage(sysConf.srcX, sysConf.srcY, pImage);
+		 DistroyImage(pImage);
 	}
 	
 

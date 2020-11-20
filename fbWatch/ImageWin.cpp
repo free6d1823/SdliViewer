@@ -46,7 +46,7 @@ ImageWin* ImageWin::CreateWinByFile(const char* name, int width, int height, int
 {
     ImageFormat* pImg = NULL;
 	AVPixelFormat fmt = GetAVPixelFormat(color);
-printf("nam=%s fmt=%d color =%d\n", name, fmt, color);
+
     if (AV_PIX_FMT_NONE == fmt) {
         pImg = CreateImageFileByName(name);
     } else {
@@ -126,6 +126,10 @@ bool ImageWin::putImage(int x, int y, ImageFormat* pImage)
 	unsigned char* pSource = (unsigned char*) ConvertImageToRgb32(pImage);
 	if (!pSource)
 		return false;
+	/* TODO: force start point . 0 */
+	if (x <0) x=0;
+	if (y <0) y=0;
+	
 	unsigned char* pDest = (unsigned char*)mpRgba + x*4 + y*mpImage->stride;
 	int ye = y + pImage->height;
 	if (ye > mpImage->height) ye = mpImage->height;
@@ -137,12 +141,12 @@ bool ImageWin::putImage(int x, int y, ImageFormat* pImage)
 	xe = (xe-x)*4;
 	int desStride = mpImage->width*4;
 	int srcStride = pImage->width*4;
-	printf("stride %d, %d, xe=%d\n", mpImage->stride, pImage->stride,xe);
+		
 	for (int i= y; i<ye; i++ ) {
 		memcpy(pt, ps, xe);
 		pt += desStride;
 		ps += srcStride;
-	}	
+	}
 	free(pSource);
 	//update surface
 	Uint32 rmask, gmask, bmask, amask;
@@ -151,8 +155,8 @@ bool ImageWin::putImage(int x, int y, ImageFormat* pImage)
     bmask = 0x00ff0000;
     amask = 0xff000000;
 
-    SDL_Surface* surf = SDL_CreateRGBSurfaceFrom(mpRgba, pImage->width, pImage->height,
-            32, 4*pImage->width, rmask, gmask, bmask, amask);
+    SDL_Surface* surf = SDL_CreateRGBSurfaceFrom(mpRgba, mpImage->width, mpImage->height,
+            32, 4*mpImage->width, rmask, gmask, bmask, amask);
     if (surf == NULL) {
         SDL_Log("Creating surface failed: %s", SDL_GetError());
         return false;
@@ -162,14 +166,7 @@ bool ImageWin::putImage(int x, int y, ImageFormat* pImage)
     mhTexture = SDL_CreateTextureFromSurface(mhRenderer, surf);
     SDL_FreeSurface(surf);
 
-    /* reset display area */
-    mRcDisplay.x = mRcDisplay.y = 0;
-    mRcDisplay.w = int( (double)mpImage->width*mZoomFactor);
-    mRcDisplay.h = int( (double)mpImage->height*mZoomFactor);
     mValidate = true;
-
-    SDL_SetWindowSize(mhWnd,  mRcDisplay.w, mRcDisplay.h);
-    SDL_ShowWindow(mhWnd);
 
     return (mhTexture != NULL);
 }
@@ -191,8 +188,8 @@ bool ImageWin::setImage(ImageFormat* pImage)
     bmask = 0x00ff0000;
     amask = 0xff000000;
  
-    SDL_Surface* surf = SDL_CreateRGBSurfaceFrom(mpRgba, pImage->width, pImage->height,
-            32, 4*pImage->width, rmask, gmask, bmask, amask);
+    SDL_Surface* surf = SDL_CreateRGBSurfaceFrom(mpRgba, mpImage->width, mpImage->height,
+            32, 4*mpImage->width, rmask, gmask, bmask, amask);
     if (surf == NULL) {
         SDL_Log("Creating surface failed: %s", SDL_GetError()); 
         return false;    
@@ -293,7 +290,6 @@ void ImageWin::draw()
     } while(0);
  
     if (bDrawImage) {
-
 	    SDL_RenderCopy(mhRenderer, mhTexture, &SrcR, &DestR);
 	    //Update the screen
 

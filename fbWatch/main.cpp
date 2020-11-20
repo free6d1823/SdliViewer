@@ -37,39 +37,28 @@ typedef enum _RAW_FORMAT {
 	RF_HEX = 2,
 	RF_HEX2 = 3,
 }RAW_FORMAT;
+#define MAX_PLANS	3
+#define MAX_LAYERS	2
+typedef struct _layerConf {
+	int x;
+	int y;
+	int width;
+	int height;
+	int format;
+	RAW_FORMAT raw;
+	char* plana[MAX_PLANS];
+	char* planb[MAX_PLANS];
+}LayerConf;
 
 typedef struct _fbwSysConf {
 	int frameWidth;
 	int frameHeight;
 	int frameFormat;
-	int srcX;
-	int srcY;
-	int srcWidth;
-	int srcHeight;
-	int srcFormat;
-	char srcFile[256];
-	RAW_FORMAT raw;
-	char* plana[3]; /* filename of 3 plans, channela*/
-	char* planb[3];
+	int layers;
+	LayerConf layer[MAX_LAYERS];
 	int delay; //flash delay
 }fbwSysConf;
-fbwSysConf sysConf = { 
-/*frame buffer info */
-	.frameWidth = 640,
-	.frameHeight = 480,
-	.frameFormat = 5,
-	.srcX = 0,
-	.srcY = 0,
-	.srcWidth = 640,
-	.srcHeight = 480,
-	.srcFormat = 0,
-    .srcFile = {0},
-	.raw = RF_NONE,
-	.plana = {0,0,0},
-	.planb = {0,0,0},
-
-	.delay = 10000
-};
+fbwSysConf sysConf = {0};
 
 unsigned char char2byte(char data)
 {
@@ -99,16 +88,16 @@ void Hex2Bin16(char* source, unsigned char* data)
 	data[0] = HEX_2_BYTE(source[3], source[2]);
 
 }
-void* CreateBufferFromHex(int* pLen)
+void* CreateBufferFromHex(int k, int* pLen)
 {
-	int len = GetImageBufferLength(sysConf.srcWidth, sysConf.srcHeight, sysConf.srcFormat);
+	int len = GetImageBufferLength(sysConf.layer[k].width, sysConf.layer[k].height, sysConf.layer[k].format);
 	void* pBuffer = malloc(len);
 	*pLen = len;
-	int plan = GetImagePlanNumbers(sysConf.srcFormat);
+	int plan = GetImagePlanNumbers(sysConf.layer[k].format);
 	unsigned char* pb = (unsigned char *)pBuffer;
 	for(int i=0; i< plan; i++) {
-		int n = GetImagePlanLength(i, sysConf.srcWidth, sysConf.srcHeight, sysConf.srcFormat);
-		FILE* fp = fopen(sysConf.plana[i], "rb");
+		int n = GetImagePlanLength(i, sysConf.layer[k].width, sysConf.layer[k].height, sysConf.layer[k].format);
+		FILE* fp = fopen(sysConf.layer[k].plana[i], "rb");
 		unsigned char* p = pb;
 		if(fp) {
 			char line[256];
@@ -126,74 +115,78 @@ void* CreateBufferFromHex(int* pLen)
 					break;
 			}
 			fclose(fp);
-			        printf("--- pp = %d\n", processed);
-
 		} else {
-			fprintf(stderr, "Failed to open file %s\n", sysConf.plana[i]);
+			fprintf(stderr, "Failed to open file %s\n", sysConf.layer[k].plana[i]);
 		}
 		pb += n;
 	}
 	return pBuffer;
 }
-void* CreateBufferFromHex2(int* pLen)
+void* CreateBufferFromHex2(int k, int* pLen)
 {
-	int len = GetImageBufferLength(sysConf.srcWidth, sysConf.srcHeight, sysConf.srcFormat);
+	int len = GetImageBufferLength(sysConf.layer[k].width, sysConf.layer[k].height, sysConf.layer[k].format);
 	void* pBuffer = malloc(len);
 	*pLen = len;
-	int plan = GetImagePlanNumbers(sysConf.srcFormat);
+	int plan = GetImagePlanNumbers(sysConf.layer[k].format);
 	unsigned char* pb = (unsigned char *)pBuffer;
 	for(int i=0; i< plan; i++) {
-		int n = GetImagePlanLength(i, sysConf.srcWidth, sysConf.srcHeight, sysConf.srcFormat);
-		FILE* fpa = fopen(sysConf.plana[i], "rb");
-		FILE* fpb = fopen(sysConf.planb[i], "rb");
-		unsigned char* p = pb;		
- 	
-		if(fpa && fpb) {
- 		
-			char linea[64];
-			char lineb[64];			
-			//unsigned char data[4];
-			int processed = 0;
+		int n = GetImagePlanLength(i, sysConf.layer[k].width, sysConf.layer[k].height, sysConf.layer[k].format);
+		if (sysConf.layer[k].plana[i] && sysConf.layer[k].plana[i][0]!=0
+			&& sysConf.layer[k].planb[i] && sysConf.layer[k].planb[i][0]!=0){	
+
+			FILE* fpa = fopen(sysConf.layer[k].plana[i], "rb");
+			FILE* fpb = fopen(sysConf.layer[k].planb[i], "rb");
+			unsigned char* p = pb;		
+	 	
+			if(fpa && fpb) {
+	 		
+				char linea[64];
+				char lineb[64];			
+				//unsigned char data[4];
+				int processed = 0;
+				
+				while (fgets(linea, sizeof(linea), fpa) && fgets(lineb, sizeof(lineb), fpb))  
+				{
+					if (linea[0]=='@' || lineb[0] == '@')
+						continue;
 			
-			while (fgets(linea, sizeof(linea), fpa) && fgets(lineb, sizeof(lineb), fpb))  
-			{
-				if (linea[0]=='@' || lineb[0] == '@')
-					continue;
-		
-				Hex2Bin16(linea, p);
-				p+=2;
-				Hex2Bin16(lineb, p);
-				p+=2;
-				processed += 4;
-				if (processed >= n)
-					break;
+					Hex2Bin16(linea, p);
+					p+=2;
+					Hex2Bin16(lineb, p);
+					p+=2;
+					processed += 4;
+					if (processed >= n)
+						break;
+				}
+	 		
+				fclose(fpa);
+				fclose(fpb);
+			}else {
+				fprintf(stderr, "Failed to open %s or %s.\n", sysConf.layer[k].plana[i], sysConf.layer[k].planb[i]);
 			}
- 		
-			fclose(fpa);
-			fclose(fpb);
-		}else {
-			fprintf(stderr, "Failed to open %s or %s.\n", sysConf.plana[i], sysConf.planb[i]);
 		}
 		pb += n;
 	}
 	return pBuffer;
 }
-void* CreateBufferFromBin(int* pLen)
+void* CreateBufferFromBin(int k, int* pLen)
 {
-	int len = GetImageBufferLength(sysConf.srcWidth, sysConf.srcHeight, sysConf.srcFormat);
+	int len = GetImageBufferLength(sysConf.layer[k].width, sysConf.layer[k].height, sysConf.layer[k].format);
 	void* pBuffer = malloc(len);
 	*pLen = len;
-	int plan = GetImagePlanNumbers(sysConf.srcFormat);
+	int plan = GetImagePlanNumbers(sysConf.layer[k].format);
 	void* p = pBuffer;
 	for(int i=0; i< plan; i++) {
-		int n = GetImagePlanLength(i, sysConf.srcWidth, sysConf.srcHeight, sysConf.srcFormat);
-	printf("plan=%d n=%d\n", i, n);
-		FILE* fp = fopen(sysConf.plana[i], "rb");
-		if(fp) {
-			int r = fread(p, 1, n, fp);
-			p = ((char*)p) + n;
+		int n = GetImagePlanLength(i, sysConf.layer[k].width, sysConf.layer[k].height, sysConf.layer[k].format);
+		if (sysConf.layer[k].plana[i] && sysConf.layer[k].plana[i][0]!=0){	
+		printf("open %s\n", sysConf.layer[k].plana[i]);
+			FILE* fp = fopen(sysConf.layer[k].plana[i], "rb");
+			if(fp) {
+				fread(p, 1, n, fp);
+			}
+			fclose(fp);
 		}
-		fclose(fp);
+		p = ((char*)p) + n;
 	}
 	return pBuffer;
 }
@@ -202,38 +195,44 @@ void ReloadImage()
 	ImageFormat* pImage = NULL;
 	void* buffer;
 	int length = 0;
-	if(sysConf.raw == RF_BIN) {
-		//combine files to one buffer
-		buffer = CreateBufferFromBin(&length);
-		if (length > 0)
-			pImage = CreateImageBuffer(buffer, length, sysConf.srcWidth, sysConf.srcHeight, sysConf.srcFormat);
-	} else if(sysConf.raw == RF_HEX) {
-		buffer = CreateBufferFromHex(&length);
-		if (length > 0)
-			pImage = CreateImageBuffer(buffer, length, sysConf.srcWidth, sysConf.srcHeight, sysConf.srcFormat);
- 
-	}else if(sysConf.raw == RF_HEX2) {
- 		buffer = CreateBufferFromHex2(&length);
-		if (length > 0)
-			pImage = CreateImageBuffer(buffer, length, sysConf.srcWidth, sysConf.srcHeight, sysConf.srcFormat);
- 
+	for (int k=0; k < sysConf.layers; k++) {
+		length = 0;
+		pImage = NULL;
+		if (sysConf.layer[k].raw == RF_NONE) {
+			pImage = CreateImageFile(sysConf.layer[k].plana[0], 
+				sysConf.layer[k].width, sysConf.layer[k].height, sysConf.layer[k].format);
+		
+		} else {
+			if(sysConf.layer[k].raw == RF_BIN) {
+				buffer = CreateBufferFromBin(k, &length);
+			} else if(sysConf.layer[k].raw == RF_HEX) {
+				buffer = CreateBufferFromHex(k, &length);
+			}else if(sysConf.layer[k].raw == RF_HEX2) {
+		 		buffer = CreateBufferFromHex2(k, &length);
+			}
+			if (length > 0) {
+				pImage = CreateImageBuffer(buffer, length, 
+					sysConf.layer[k].width, sysConf.layer[k].height, sysConf.layer[k].format);
+			}			
+		}
+
+		if (pImage) {
+			//gWin->setImage(pImage);
+
+			gWin->putImage(sysConf.layer[k].x, sysConf.layer[k].y, pImage);
+			DistroyImage(pImage);
+		}
 	}
-	else if(sysConf.srcFile[0]) {
-		pImage = CreateImageFile(sysConf.srcFile, sysConf.srcWidth, sysConf.srcHeight, sysConf.srcFormat);
-	}
-	if (pImage) {
-		//gWin->setImage(pImage);
-		gWin->putImage(sysConf.srcX, sysConf.srcY, pImage);
-		 DistroyImage(pImage);
-	}
-	
+	gWin->update();
 
 }
 void FreeConfigure()
 {
-	for (int i=0;i<3; i++) {
-		if (sysConf.plana[i] ) free(sysConf.plana[i]);
-        if (sysConf.planb[i] ) free(sysConf.planb[i]);
+	for(int k=0; k< MAX_LAYERS; k++) {
+		for (int i=0;i<MAX_PLANS; i++) {
+			if (sysConf.layer[k].plana[i] ) free(sysConf.layer[k].plana[i]);
+		    if (sysConf.layer[k].planb[i] ) free(sysConf.layer[k].planb[i]);
+		}
 	}
 	memset(&sysConf, 0, sizeof(sysConf));
 }
@@ -246,47 +245,60 @@ int ReadConfigure(char* file)
 	void* h = openIniFile(conf, true);
 	if (h) {
 		char value[32];
-		sysConf.frameWidth = GetProfileInt("display", "width", sysConf.frameWidth, h);
-		sysConf.frameHeight = GetProfileInt("display", "height", sysConf.frameHeight, h);
+		sysConf.frameWidth = GetProfileInt("display", "width", 1280, h);
+		sysConf.frameHeight = GetProfileInt("display", "height", 720, h);
 		if ( GetProfileString("display", "format",  value, sizeof(value), "RGBA", h)) {
 			sysConf.frameFormat = GetPixelFormat(value);
 		}
-		//layer profile
-		sysConf.srcWidth = GetProfileInt("layer0", "width", sysConf.srcWidth, h);
-        sysConf.srcHeight = GetProfileInt("layer0", "height", sysConf.srcHeight, h);
-        sysConf.srcX = GetProfileInt("layer0", "x", sysConf.srcX, h);
-        sysConf.srcY = GetProfileInt("layer0", "y", sysConf.srcY, h);
-        if ( GetProfileString("layer0", "format",  value, sizeof(value), "I420", h)) {
-            sysConf.srcFormat = GetPixelFormat(value);
-        }
-		 GetProfileString("layer0", "file",  sysConf.srcFile, sizeof(sysConf.srcFile), "", h);
-		//plan info
-		sysConf.raw = (RAW_FORMAT)GetProfileInt("layer0", "raw", sysConf.srcY, h);
-		char plan[256];
-		char key[32]="plan1a";
-		switch (sysConf.raw) {
-			case 3: //2 channels
+		sysConf.delay =  GetProfileInt("display", "delay", 10000, h);
+		if (sysConf.delay < 100) sysConf.delay = 100; //avoid zero
+		sysConf.layers = GetProfileInt("display", "layers", 0, h);
+		char section[32];
+		for (int i=0; i<sysConf.layers; i++) {
+			sprintf(section, "layer%d", i);
+			sysConf.layer[i].x =  GetProfileInt(section, "x", 0, h);
+			sysConf.layer[i].y =  GetProfileInt(section, "y", 0, h);
+			sysConf.layer[i].width =  GetProfileInt(section, "width", 0, h);			
+			sysConf.layer[i].height =  GetProfileInt(section, "height", 0, h);
+		    if ( GetProfileString(section, "format",  value, sizeof(value), "I420", h)) {
+		        sysConf.layer[i].format = GetPixelFormat(value);
+		    }
+		    sysConf.layer[i].raw =  (RAW_FORMAT) GetProfileInt(section, "raw", 0, h);
+		    char filename[256];
+			char key[32]="plan1a";
+			int plans = GetImagePlanNumbers(sysConf.layer[i].format);
+			switch(sysConf.layer[i].raw) {
+				case RF_NONE:
+				if (GetProfileString(section, key,  filename, sizeof(filename), "", h))
+					sysConf.layer[i].plana[0] = strdup(filename);
+				if (!sysConf.layer[i].plana[0] || sysConf.layer[i].plana[0][0]==0)
+				 	printf("conf error: wrong in [%s] %s=%s!\n", section, key, filename);
+				else
+				 	printf("conf error: wrong in [%s] %s=%s!\n", section, key, filename);	
+				break;
+				case RF_HEX2: //two channel
 				key[4] = '1'; key[5]='b';
-				for( int i = 0; i < 3; i++) {
-				 	if (GetProfileString("layer0", key,  plan, sizeof(plan), "", h))
-					 	sysConf.planb[i] = strdup(plan);
+				for( int k = 0; k < plans; k++) {
+				 	if (GetProfileString(section, key,  filename, sizeof(filename), "", h))
+					 	sysConf.layer[i].planb[k] = strdup(filename);
+					 if (!sysConf.layer[i].planb[k] || sysConf.layer[i].planb[k][0]==0)
+					 	printf("conf error: wrong in [%s] %s=%s!\n", section, key, filename);
 					key[4] ++;
-				}
-			case 1:
-			case 2:
-				//single channel
+				}				
+				case RF_BIN: //one channel
+				case RF_HEX:
 				key[4] = '1'; key[5]='a';
-				for( int i = 0; i < 3; i++) {			
-				 	if (GetProfileString("layer0", key,  plan, sizeof(plan), "", h))
-					 	sysConf.plana[i] = strdup(plan);
+				for( int k = 0; k < plans; k++) {
+				 	if (GetProfileString(section, key,  filename, sizeof(filename), "", h))
+					 	sysConf.layer[i].plana[k] = strdup(filename);
+					 if (!sysConf.layer[i].plana[k] || sysConf.layer[i].plana[k][0]==0)
+					 	printf("conf error: wrong in [%s] %s=%s!\n", section, key, filename);
 					key[4] ++;
 				}
 				break;
-			default:
-				break;
-		}
-
-		 closeIniFile(h);
+			}
+        }
+		closeIniFile(h);
 	}
 	free(conf);
 	return 0;
@@ -307,7 +319,7 @@ int main(int argc, char* argv[])
 		return 1;
 	}
 
-    gWin = ImageWin::Create(sysConf.frameWidth, sysConf.frameHeight, sysConf.frameFormat, 0xff440000);
+    gWin = ImageWin::Create(sysConf.frameWidth, sysConf.frameHeight, sysConf.frameFormat, 0xff880000);
 
     if (!gWin){
  	    SDL_Quit();
@@ -326,14 +338,14 @@ int main(int argc, char* argv[])
             ProcessCommand(cmd);
             if (gWin) gWin->update();
         }
-		if(reload%1000 == 0 ) {
+		if(reload%sysConf.delay == 0 ) {
 			ReloadImage();
 			if (gWin) gWin->update();
 		}
 		reload++;
         SDL_FlushEvents(SDL_FIRSTEVENT, SDL_LASTEVENT);
 
-        int tDif = 10 - (SDL_GetTicks() - tStart);
+        int tDif = 30 - (SDL_GetTicks() - tStart);
         if(tDif < 0) tDif= 0;
         tStart = SDL_GetTicks();
         SDL_Delay(tDif);        

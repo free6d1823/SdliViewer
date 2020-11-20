@@ -12,7 +12,7 @@ INCLUDE_PATH = -I../include $(SDL_PATH)
 CFLAGS += $(INCLUDE_PATH) -g -Wno-switch -Wall -c
 
 LIB_PATH = -L/usr/local/lib
-LIB_LINK = -lSDL2 
+LIB_LINK = -Bstatic -lSDL2 
 LFLAGS += $(LIB_PATH) $(LIB_LINK)
 
 all:	$(TARGET_NAME)

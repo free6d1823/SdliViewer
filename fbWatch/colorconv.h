@@ -351,13 +351,31 @@ void Rgba_Rgb32(unsigned char* pYuv, int width, int stride, int height, unsigned
 	unsigned char* ps = pYuv;
 	unsigned char* pt = pRgb;
 	for (int i=0; i<height; i++) {
-		memcpy(pt, ps, width*4);
+		for (int j=0; j<width; j++) {
+			pt[j*4] = ps[j*4+2];	//B
+			pt[j*4+1] = ps[j*4+1];	//G
+			pt[j*4+2] = ps[j*4];	//R
+			pt[j*4+3] = 0xff;		//A
+		}
 		pt += width*4;
 		ps += stride;
 	}
 }
 void Bgra_Rgb32(unsigned char* pYuv, int width, int stride, int height, unsigned char* pRgb)
 {
+    unsigned char* ps = pYuv;
+    unsigned char* pt = pRgb;
+    for (int i=0; i<height; i++) {
+        for (int j=0; j<width; j++) {
+            pt[j*4] = ps[j*4];
+            pt[j*4+1] = ps[j*4+1];
+            pt[j*4+2] = ps[j*4+2];
+            pt[j*4+3] = 0xff;
+        }
+        pt += width*4;
+        ps += stride;
+    }
+
 }
 void Rgb24_Rgb32(unsigned char* pYuv, int width, int stride, int height, unsigned char* pRgb)
 {
@@ -371,4 +389,3 @@ void Bgr24_Rgb32(unsigned char* pYuv, int width, int stride, int height, unsigne
 }
 
 #endif //_COLOR_CONV_H_
-

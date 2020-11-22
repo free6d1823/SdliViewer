@@ -40,8 +40,6 @@ PixelFormatTable sPixelFormatTable[] = {
 void* ConvertImageToRgb32(ImageFormat* pImage)
 {
     unsigned char* pRgb = NULL;
-    if (GetAVPixelFormat(pImage->colorspace) == AV_PIX_FMT_RGBA)
-        return pImage->data;
 
     pRgb = (unsigned char*) malloc(pImage->width* 4* pImage->height);
     if (!pRgb) {
@@ -155,7 +153,6 @@ ImageFormat* CreateImageFileByName(const char* filename)
         strncpy(ext, p1, 7);
     else
         return NULL;
-printf("filenae=%s, ext=%s,\n", filename, ext);
     if (strcmp(ext, ".y4m") == 0)
         return LoadY4MFile(filename);
     else {
@@ -205,6 +202,7 @@ int GetImagePlanNumbers(int colorIndex)
     case AV_PIX_FMT_YUYV422:
     case AV_PIX_FMT_UYVY422:
     case AV_PIX_FMT_RGBA:
+	case AV_PIX_FMT_BGRA:
     case AV_PIX_FMT_RGB24:
     case AV_PIX_FMT_BGR24:    
         plan = 1;
@@ -228,6 +226,7 @@ int GetImagePlanLength(int plan, int width, int height, int colorIndex)
     case AV_PIX_FMT_UYVY422:
     	return width*2*height;
     case AV_PIX_FMT_RGBA:
+	case AV_PIX_FMT_BGRA:	
     	return width*4*height;
     case AV_PIX_FMT_RGB24:
     case AV_PIX_FMT_BGR24:    
@@ -265,6 +264,7 @@ int GetImageBufferLength(int width, int height, int colorIndex)
         length = width * height * 3/2;
         break;
     case AV_PIX_FMT_RGBA:
+	case AV_PIX_FMT_BGRA:	
         length = width*4 * height;
         break;
     case AV_PIX_FMT_RGB24:
@@ -323,6 +323,7 @@ ImageFormat* CreateImageBuffer(void* buf, int length, int width, int height, int
         pImg->length = pImg->stride * pImg->height * 3/2;
         break;
     case AV_PIX_FMT_RGBA:
+	case AV_PIX_FMT_BGRA:	
         pImg->stride = width*4; //be multiple of 4
         pImg->bitsPerPixel = 32;
         pImg->length = pImg->stride * pImg->height;
@@ -358,6 +359,7 @@ ImageFormat* CreateImage(int width, int height, int colorIndex, int defColor)
     switch(sPixelFormatTable[colorIndex].fmt) {
 
     case AV_PIX_FMT_RGBA:
+	case AV_PIX_FMT_BGRA:	
         pImg->stride = width*4; //be multiple of 4
         pImg->bitsPerPixel = 32;
         pImg->length = pImg->stride * pImg->height;

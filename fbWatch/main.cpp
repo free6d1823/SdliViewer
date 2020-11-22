@@ -38,7 +38,7 @@ typedef enum _RAW_FORMAT {
 	RF_HEX2 = 3,
 }RAW_FORMAT;
 #define MAX_PLANS	3
-#define MAX_LAYERS	2
+#define MAX_LAYERS	4
 typedef struct _layerConf {
 	int x;
 	int y;
@@ -217,8 +217,6 @@ void ReloadImage()
 		}
 
 		if (pImage) {
-			//gWin->setImage(pImage);
-
 			gWin->putImage(sysConf.layer[k].x, sysConf.layer[k].y, pImage);
 			DistroyImage(pImage);
 		}

@@ -28,6 +28,9 @@ void Rgba_Rgb32(unsigned char* pYuv, int width, int stride, int height, unsigned
 void Bgra_Rgb32(unsigned char* pYuv, int width, int stride, int height, unsigned char* pRgb);
 void Rgb24_Rgb32(unsigned char* pYuv, int width, int stride, int height, unsigned char* pRgb);
 void Bgr24_Rgb32(unsigned char* pYuv, int width, int stride, int height, unsigned char* pRgb);
+void Gray8_Rgb32(unsigned char* pYuv, int width, int stride, int height, unsigned char* pRgb);
+void Yuv444p_Rgb32(unsigned char* pYuv, int width, int stride, int height, unsigned char* pRgb);
+void Rgb444_Rgb32(unsigned char* pYuv, int width, int stride, int height, unsigned char* pRgb);
 
 #define CLIP(X) ( (X) > 255 ? 255 : (X) < 0 ? 0 : X)
 
@@ -387,5 +390,75 @@ void Bgr24_Rgb32(unsigned char* pYuv, int width, int stride, int height, unsigne
 {
 	Rgb24ToRgb32(pYuv, width, stride, height, pRgb, 1);
 }
+
+void Gray8_Rgb32(unsigned char* pYuv, int width, int stride, int height, unsigned char* pRgb)
+{
+	unsigned char* ps = pYuv;
+	unsigned char* pt = pRgb;
+	for (int i=0; i<height; i++) {
+		for (int j=0; j<width; j++) {
+			pt[j*4] = ps[j];	//B
+			pt[j*4+1] = ps[j];	//G
+			pt[j*4+2] = ps[j];	//R
+			pt[j*4+3] = 0xff;	//A
+		}
+		pt += width*4;
+		ps += stride;
+	}
+}
+void Yuv444p_Rgb32(unsigned char* pYuv, int width, int stride, int height, unsigned char* pRgb)
+{
+    int nBps = width*4;
+    unsigned char* pY1 = pYuv;
+
+    unsigned char* pV;
+    unsigned char* pU;
+ 
+    pU = pY1+stride*height; 
+    pV = pU+stride*height;
+
+    unsigned char* pLine1 = pRgb;
+
+    unsigned char y1,u,v;
+
+    for (int i=0; i<height; i++)
+    {
+        for (int j=0; j<width; j++)
+        {
+            y1 = pY1[j];
+            u = pU[j];
+            v = pV[j];
+            pLine1[j*4] = YUV2B(y1, u, v);//b
+            pLine1[j*4+1] = YUV2G(y1, u, v);//g
+            pLine1[j*4+2] = YUV2R(y1, u, v);//r
+            pLine1[j*4+3] = 0xff;
+        }
+        pY1 += stride;
+        pV += stride;
+        pU += stride;
+        pLine1 += nBps;
+    }
+}
+void Rgb444_Rgb32(unsigned char* pYuv, int width, int stride, int height, unsigned char* pRgb)
+{
+	unsigned char* pr = pYuv;
+	unsigned char* pg = pYuv+stride*height;
+	unsigned char* pb = pg + stride*height;
+	
+	unsigned char* pt = pRgb;
+	for (int i=0; i<height; i++) {
+		for (int j=0; j<width; j++) {
+			pt[j*4] = pb[j];	//B
+			pt[j*4+1] = pg[j];	//G
+			pt[j*4+2] = pr[j];	//R
+			pt[j*4+3] = 0xff;	//A
+		}
+		pt += width*4;
+		pr += stride;
+		pg += stride;
+		pb += stride;
+	}	
+}
+
 
 #endif //_COLOR_CONV_H_

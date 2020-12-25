@@ -45,6 +45,7 @@ typedef struct _layerConf {
 	int width;
 	int height;
 	int format;
+	int plans;
 	RAW_FORMAT raw;
 	char* plana[MAX_PLANS];
 	char* planb[MAX_PLANS];
@@ -122,6 +123,33 @@ void* CreateBufferFromHex(int k, int* pLen)
 	}
 	return pBuffer;
 }
+void* CreateBufferFromContHex(int k, int* pLen)
+{
+	int len = GetImageBufferLength(sysConf.layer[k].width, sysConf.layer[k].height, sysConf.layer[k].format);
+	void* pBuffer = malloc(len);
+	*pLen = len;
+	FILE* fp = fopen(sysConf.layer[k].plana[0], "rb");
+	if(fp) {
+		char line[256];
+		unsigned char* p = (unsigned char*) pBuffer;
+		//unsigned char data[4];
+		int processed = 0;
+		while(fgets(line, sizeof(line), fp))
+		{
+			if (line[0]=='@')
+				continue;
+			Hex2Bin32(line, p);
+			p+=4;
+			processed += 4;
+			if (processed >= len)
+				break;
+		}
+		fclose(fp);
+	} else {
+		fprintf(stderr, "Failed to open file %s\n", sysConf.layer[k].plana[0]);
+	}
+	return pBuffer;		
+}
 void* CreateBufferFromHex2(int k, int* pLen)
 {
 	int len = GetImageBufferLength(sysConf.layer[k].width, sysConf.layer[k].height, sysConf.layer[k].format);
@@ -169,6 +197,43 @@ void* CreateBufferFromHex2(int k, int* pLen)
 	}
 	return pBuffer;
 }
+
+void* CreateBufferFromContHex2(int k, int* pLen)
+{
+	int len = GetImageBufferLength(sysConf.layer[k].width, sysConf.layer[k].height, sysConf.layer[k].format);
+	void* pBuffer = malloc(len);
+	*pLen = len;
+	FILE* fpa = fopen(sysConf.layer[k].plana[0], "rb");
+	FILE* fpb = fopen(sysConf.layer[k].planb[0], "rb");	
+	if(fpa && fpb) { 		
+		char linea[64];
+		char lineb[64];			
+		//unsigned char data[4];
+		int processed = 0;
+		unsigned char* p = (unsigned char*)pBuffer;	
+		while (fgets(linea, sizeof(linea), fpa) && fgets(lineb, sizeof(lineb), fpb))  
+		{
+			if (linea[0]=='@' || lineb[0] == '@')
+				continue;
+			
+			Hex2Bin16(linea, p);
+			p+=2;
+			Hex2Bin16(lineb, p);
+			p+=2;
+			processed += 4;
+			if (processed >= len)
+				break;
+		}
+	 		
+		fclose(fpa);
+		fclose(fpb);
+	}else {
+		fprintf(stderr, "Failed to open %s or %s.\n", sysConf.layer[k].plana[0], sysConf.layer[k].planb[0]);
+	}
+
+	return pBuffer;
+}
+
 void* CreateBufferFromBin(int k, int* pLen)
 {
 	int len = GetImageBufferLength(sysConf.layer[k].width, sysConf.layer[k].height, sysConf.layer[k].format);
@@ -203,12 +268,24 @@ void ReloadImage()
 				sysConf.layer[k].width, sysConf.layer[k].height, sysConf.layer[k].format);
 		
 		} else {
-			if(sysConf.layer[k].raw == RF_BIN) {
-				buffer = CreateBufferFromBin(k, &length);
-			} else if(sysConf.layer[k].raw == RF_HEX) {
-				buffer = CreateBufferFromHex(k, &length);
-			}else if(sysConf.layer[k].raw == RF_HEX2) {
-		 		buffer = CreateBufferFromHex2(k, &length);
+			switch(sysConf.layer[k].raw) {
+				case RF_BIN:
+					 buffer = CreateBufferFromBin(k, &length);
+					 break;
+				case RF_HEX:
+					if(sysConf.layer[k].plans == 1)
+						buffer = CreateBufferFromContHex(k, &length);
+					else
+					 	buffer = CreateBufferFromHex(k, &length);
+					 break;
+				case RF_HEX2:
+					if(sysConf.layer[k].plans == 1)
+						buffer = CreateBufferFromContHex2(k, &length);
+					else
+						buffer = CreateBufferFromHex2(k, &length);
+					break;
+				default:
+					break;
 			}
 			if (length > 0) {
 				pImage = CreateImageBuffer(buffer, length, 
@@ -261,10 +338,14 @@ int ReadConfigure(char* file)
 		    if ( GetProfileString(section, "format",  value, sizeof(value), "I420", h)) {
 		        sysConf.layer[i].format = GetPixelFormat(value);
 		    }
+		printf("layer %d fmt=%s %d\n", i, value, sysConf.layer[i].format );	
 		    sysConf.layer[i].raw =  (RAW_FORMAT) GetProfileInt(section, "raw", 0, h);
 		    char filename[256];
 			char key[32]="plan1a";
-			int plans = GetImagePlanNumbers(sysConf.layer[i].format);
+			int maxPlans = GetImagePlanNumbers(sysConf.layer[i].format);
+			int plans = GetProfileInt(section, "plans", maxPlans, h);//number of filenames
+			if (plans > maxPlans) plans = maxPlans;	
+			sysConf.layer[i].plans = plans;
 			switch(sysConf.layer[i].raw) {
 				case RF_NONE:
 				if (GetProfileString(section, key,  filename, sizeof(filename), "", h))
@@ -294,6 +375,8 @@ int ReadConfigure(char* file)
 					key[4] ++;
 				}
 				break;
+
+				
 			}
         }
 		closeIniFile(h);

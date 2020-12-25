@@ -33,8 +33,10 @@ PixelFormatTable sPixelFormatTable[] = {
 	{AV_PIX_FMT_BGRA, "BGRA", "packed BGRA 8:8:8:8, 32bpp", Bgra_Rgb32},
 	{AV_PIX_FMT_RGB24, "RGB14", "RGB24", Rgb24_Rgb32},
 	{AV_PIX_FMT_BGR24, "BGR24", "BGR24", Bgr24_Rgb32},
-	{AV_PIX_FMT_YVYU422, "YVYU", "YVYU422 YVYU packet", Yvyu422_Rgb32}
-
+	{AV_PIX_FMT_YVYU422, "YVYU", "YVYU422 YVYU packet", Yvyu422_Rgb32},
+    {AV_PIX_FMT_YUV444P, "YUV444", "YUV 8-bits 3 plannar mode", Yuv444p_Rgb32},
+    {AV_PIX_FMT_GBRP, "RGB444", "RGB 8-bits 3 plannar mode", Rgb444_Rgb32},
+    {AV_PIX_FMT_GRAY8, "GRAY8", "Gray 8-bit one plan", Gray8_Rgb32},
 };
 
 void* ConvertImageToRgb32(ImageFormat* pImage)
@@ -204,9 +206,12 @@ int GetImagePlanNumbers(int colorIndex)
     case AV_PIX_FMT_RGBA:
 	case AV_PIX_FMT_BGRA:
     case AV_PIX_FMT_RGB24:
-    case AV_PIX_FMT_BGR24:    
+    case AV_PIX_FMT_BGR24:
+    case AV_PIX_FMT_GRAY8:  
         plan = 1;
         break;
+    case AV_PIX_FMT_GBRP:
+    case AV_PIX_FMT_YUV444P:
     case AV_PIX_FMT_YUV420P:
     case AV_PIX_FMT_YUV411P:
     	plan = 3;
@@ -229,8 +234,10 @@ int GetImagePlanLength(int plan, int width, int height, int colorIndex)
 	case AV_PIX_FMT_BGRA:	
     	return width*4*height;
     case AV_PIX_FMT_RGB24:
-    case AV_PIX_FMT_BGR24:    
-        return (((width*3+3)>>2)<<2 * height);
+    case AV_PIX_FMT_BGR24:
+    case AV_PIX_FMT_GBRP:
+    case AV_PIX_FMT_YUV444P:    
+        return ((((width*3+3)>>2)<<2) * height);
     case AV_PIX_FMT_YUV420P:
     case AV_PIX_FMT_YUV411P:
     	if (plan == 0)
@@ -244,6 +251,8 @@ int GetImagePlanLength(int plan, int width, int height, int colorIndex)
     		return width*height;
     	else 
     		return width*height/2;
+    case AV_PIX_FMT_GRAY8:
+    	return width*height;
     }
 	return 0;
 }
@@ -268,9 +277,13 @@ int GetImageBufferLength(int width, int height, int colorIndex)
         length = width*4 * height;
         break;
     case AV_PIX_FMT_RGB24:
-    case AV_PIX_FMT_BGR24:
-		length = ((width*3+3)>>2)<<2 * height;
+    case AV_PIX_FMT_GBRP:
+    case AV_PIX_FMT_YUV444P:
+		length = (((width*3+3)>>2)<<2) * height;
         break;
+    case AV_PIX_FMT_GRAY8:
+    	length = width*height;
+    	break;
     }
     return length;
 }
@@ -329,9 +342,20 @@ ImageFormat* CreateImageBuffer(void* buf, int length, int width, int height, int
         pImg->length = pImg->stride * pImg->height;
         break;
     case AV_PIX_FMT_RGB24:
-    case AV_PIX_FMT_BGR24:
+    case AV_PIX_FMT_BGR24:   
         pImg->stride = ((width*3+3)>>2)<<2; //be multiple of 4
         pImg->bitsPerPixel = 24;
+        pImg->length = pImg->stride * pImg->height;
+        break;
+    case AV_PIX_FMT_YUV444P:
+    case AV_PIX_FMT_GBRP:    
+        pImg->stride = width; //be multiple of 4
+        pImg->bitsPerPixel = 24;
+        pImg->length = pImg->stride * pImg->height;
+        break;        
+ 	case AV_PIX_FMT_GRAY8:    
+        pImg->stride = width; //be multiple of 4
+        pImg->bitsPerPixel = 8;
         pImg->length = pImg->stride * pImg->height;
         break;
     }

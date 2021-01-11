@@ -36,7 +36,7 @@ ImageWin* ImageWin::CreateImageWin(const char* name)
     return w;
 }
 ImageWin::ImageWin():
-    mhWnd(NULL), mhRenderer(NULL), mhTexture(NULL), mpSource(NULL), mpRgba(NULL) 
+    mhWnd(NULL), mhRenderer(NULL), mhTexture(NULL), mpSource(NULL), mpRgba(NULL)
 {
     mZoomFactor = 1.0;
     mpImage = NULL;
@@ -56,13 +56,13 @@ ImageWin* ImageWin::CreateWinByFile(const char* name, int width, int height, int
     if (!pImg) {
         fprintf(stderr, "Failed to load file %s!\n", name);
         return NULL;
-    } 
-    ImageWin* pWin = CreateImageWin(name);   
-    if (pWin) 
+    }
+    ImageWin* pWin = CreateImageWin(name);
+    if (pWin)
         pWin->setImage(pImg);
     else
         DistroyImage(pImg);
-    return pWin;    
+    return pWin;
 }
 ImageWin* ImageWin::Create(int width, int height, int colorIndex, int defColor)
 {
@@ -81,10 +81,10 @@ ImageWin* ImageWin::Create(int width, int height, int colorIndex, int defColor)
     ImageWin* w = new ImageWin();
     w->mhWnd = hWnd;
     w->mhRenderer = hRenderer;
-	
+
 	ImageFormat* pImage = CreateImage(width, height, colorIndex, defColor);
 	if (pImage)
-			w->setImage(pImage); 
+			w->setImage(pImage);
 	return w;
 
 }
@@ -93,9 +93,9 @@ ImageWin::~ImageWin()
 {
     if (mhTexture)
         SDL_DestroyTexture(mhTexture);
-    if(mhRenderer) 
+    if(mhRenderer)
         SDL_DestroyRenderer(mhRenderer);
-    if(mhWnd) 
+    if(mhWnd)
         SDL_DestroyWindow(mhWnd);
     if(mpSource) {
         if(mpRgba == mpSource)
@@ -119,6 +119,7 @@ void ImageWin::freeImage()
         mpRgba = NULL;
     }
 }
+/*copy pImage to ImageWin->mpImage, free pImage by caller */
 bool ImageWin::putImage(int x, int y, ImageFormat* pImage)
 {
 	if (!mpImage || !mpRgba)
@@ -129,7 +130,7 @@ bool ImageWin::putImage(int x, int y, ImageFormat* pImage)
 	/* TODO: force start point . 0 */
 	if (x <0) x=0;
 	if (y <0) y=0;
-	
+
 	unsigned char* pDest = (unsigned char*)mpRgba + x*4 + y*mpImage->stride;
 	int ye = y + pImage->height;
 	if (ye > mpImage->height) ye = mpImage->height;
@@ -141,7 +142,7 @@ bool ImageWin::putImage(int x, int y, ImageFormat* pImage)
 	xe = (xe-x)*4;
 	int desStride = mpImage->width*4;
 	int srcStride = pImage->width*4;
-		
+
 	for (int i= y; i<ye; i++ ) {
 		memcpy(pt, ps, xe);
 		pt += desStride;
@@ -175,11 +176,11 @@ bool ImageWin::setImage(ImageFormat* pImage)
 {
     freeImage();
     mpImage = pImage;
- 
+
     if (pImage->colorspace == AV_PIX_FMT_RGBA) {
         mpRgba = mpImage->data;
     } else {
- 
+
         mpRgba = ConvertImageToRgb32(mpImage);
     }
     Uint32 rmask, gmask, bmask, amask;
@@ -187,12 +188,12 @@ bool ImageWin::setImage(ImageFormat* pImage)
     gmask = 0x0000ff00;
     bmask = 0x00ff0000;
     amask = 0xff000000;
- 
+
     SDL_Surface* surf = SDL_CreateRGBSurfaceFrom(mpRgba, mpImage->width, mpImage->height,
             32, 4*mpImage->width, rmask, gmask, bmask, amask);
     if (surf == NULL) {
-        SDL_Log("Creating surface failed: %s", SDL_GetError()); 
-        return false;    
+        SDL_Log("Creating surface failed: %s", SDL_GetError());
+        return false;
     }
     if (mhTexture)
         SDL_DestroyTexture(mhTexture);
@@ -288,7 +289,7 @@ void ImageWin::draw()
 
         bDrawImage = true;
     } while(0);
- 
+
     if (bDrawImage) {
 	    SDL_RenderCopy(mhRenderer, mhTexture, &SrcR, &DestR);
 	    //Update the screen

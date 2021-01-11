@@ -31,7 +31,7 @@ PixelFormatTable sPixelFormatTable[] = {
 	{AV_PIX_FMT_UYVY422, "UYVY", "UYVY420 UYVY packet", Uyvy422_Rgb32},
 	{AV_PIX_FMT_RGBA, "RGBA", "packed RGBA 8:8:8:8, 32bpp", Rgba_Rgb32},
 	{AV_PIX_FMT_BGRA, "BGRA", "packed BGRA 8:8:8:8, 32bpp", Bgra_Rgb32},
-	{AV_PIX_FMT_RGB24, "RGB14", "RGB24", Rgb24_Rgb32},
+	{AV_PIX_FMT_RGB24, "RGB24", "RGB24", Rgb24_Rgb32},
 	{AV_PIX_FMT_BGR24, "BGR24", "BGR24", Bgr24_Rgb32},
 	{AV_PIX_FMT_YVYU422, "YVYU", "YVYU422 YVYU packet", Yvyu422_Rgb32},
     {AV_PIX_FMT_YUV444P, "YUV444", "YUV 8-bits 3 plannar mode", Yuv444p_Rgb32},
@@ -48,7 +48,7 @@ void* ConvertImageToRgb32(ImageFormat* pImage)
         return NULL;
 	}
 	if(sPixelFormatTable[pImage->colorCode].fnConv)
-		sPixelFormatTable[pImage->colorCode].fnConv((unsigned char*)pImage->data, 
+		sPixelFormatTable[pImage->colorCode].fnConv((unsigned char*)pImage->data,
 				pImage->width, pImage->stride, pImage->height, pRgb);
 
     return pRgb;
@@ -137,8 +137,8 @@ static ImageFormat* LoadY4MFile(const char* filename)
 
     if (bParserBody) {
         pImg->data = malloc(pImg->length);
-        fread(pImg->data, 1, pImg->length, fp);   
-        fclose(fp); 
+        fread(pImg->data, 1, pImg->length, fp);
+        fclose(fp);
         return pImg;
     }
     fclose(fp);
@@ -182,7 +182,7 @@ ImageFormat* CreateImageFileByName(const char* filename)
         if (strcmp(ext, ".yuyv") == 0)
             colorIndex = GetIndexByAVPixelFormat(AV_PIX_FMT_YUYV422);
         else if(strcmp(ext, ".rgba") == 0){
-           colorIndex = GetIndexByAVPixelFormat(AV_PIX_FMT_RGBA);  
+           colorIndex = GetIndexByAVPixelFormat(AV_PIX_FMT_RGBA);
         }
         else if (strcmp(ext, ".yuv") == 0)
             colorIndex = GetIndexByAVPixelFormat(AV_PIX_FMT_YUV420P);
@@ -207,7 +207,7 @@ int GetImagePlanNumbers(int colorIndex)
 	case AV_PIX_FMT_BGRA:
     case AV_PIX_FMT_RGB24:
     case AV_PIX_FMT_BGR24:
-    case AV_PIX_FMT_GRAY8:  
+    case AV_PIX_FMT_GRAY8:
         plan = 1;
         break;
     case AV_PIX_FMT_GBRP:
@@ -221,7 +221,7 @@ int GetImagePlanNumbers(int colorIndex)
         plan = 2;
         break;
     }
-    return plan;	
+    return plan;
 }
 int GetImagePlanLength(int plan, int width, int height, int colorIndex)
 {
@@ -231,27 +231,28 @@ int GetImagePlanLength(int plan, int width, int height, int colorIndex)
     case AV_PIX_FMT_UYVY422:
     	return width*2*height;
     case AV_PIX_FMT_RGBA:
-	case AV_PIX_FMT_BGRA:	
+	case AV_PIX_FMT_BGRA:
     	return width*4*height;
     case AV_PIX_FMT_RGB24:
     case AV_PIX_FMT_BGR24:
-    case AV_PIX_FMT_GBRP:
-    case AV_PIX_FMT_YUV444P:    
+
+    case AV_PIX_FMT_YUV444P:
         return ((((width*3+3)>>2)<<2) * height);
     case AV_PIX_FMT_YUV420P:
     case AV_PIX_FMT_YUV411P:
     	if (plan == 0)
     		return width*height;
-    	else 
+    	else
     		return width*height/4;
- 
+
     case AV_PIX_FMT_NV12:
     case AV_PIX_FMT_NV21:
     	if (plan == 0)
     		return width*height;
-    	else 
+    	else
     		return width*height/2;
-    case AV_PIX_FMT_GRAY8:
+    case AV_PIX_FMT_GBRP: //RGB444
+	case AV_PIX_FMT_GRAY8:
     	return width*height;
     }
 	return 0;
@@ -273,7 +274,7 @@ int GetImageBufferLength(int width, int height, int colorIndex)
         length = width * height * 3/2;
         break;
     case AV_PIX_FMT_RGBA:
-	case AV_PIX_FMT_BGRA:	
+	case AV_PIX_FMT_BGRA:
         length = width*4 * height;
         break;
     case AV_PIX_FMT_RGB24:
@@ -285,6 +286,7 @@ int GetImageBufferLength(int width, int height, int colorIndex)
     	length = width*height;
     	break;
     }
+	printf("colorIndex = %d, length = %d\n", colorIndex, length);
     return length;
 }
 
@@ -300,13 +302,13 @@ ImageFormat* CreateImageFile(const char* name, int width, int height, int colorI
     if (!fp) {
       	fprintf(stderr, "Failed to open file %s\n", name);
       	return NULL;
-    }  
+    }
     void* buffer = malloc(length);
 	fread(buffer, 1, length, fp);
 	fclose(fp);
-    
+
     return CreateImageBuffer(buffer, length, width, height, colorIndex);
-    
+
 }
 
 ImageFormat* CreateImageBuffer(void* buf, int length, int width, int height, int colorIndex)
@@ -336,24 +338,24 @@ ImageFormat* CreateImageBuffer(void* buf, int length, int width, int height, int
         pImg->length = pImg->stride * pImg->height * 3/2;
         break;
     case AV_PIX_FMT_RGBA:
-	case AV_PIX_FMT_BGRA:	
+	case AV_PIX_FMT_BGRA:
         pImg->stride = width*4; //be multiple of 4
         pImg->bitsPerPixel = 32;
         pImg->length = pImg->stride * pImg->height;
         break;
     case AV_PIX_FMT_RGB24:
-    case AV_PIX_FMT_BGR24:   
+    case AV_PIX_FMT_BGR24:
         pImg->stride = ((width*3+3)>>2)<<2; //be multiple of 4
         pImg->bitsPerPixel = 24;
         pImg->length = pImg->stride * pImg->height;
         break;
     case AV_PIX_FMT_YUV444P:
-    case AV_PIX_FMT_GBRP:    
+    case AV_PIX_FMT_GBRP:
         pImg->stride = width; //be multiple of 4
         pImg->bitsPerPixel = 24;
         pImg->length = pImg->stride * pImg->height;
-        break;        
- 	case AV_PIX_FMT_GRAY8:    
+        break;
+ 	case AV_PIX_FMT_GRAY8:
         pImg->stride = width; //be multiple of 4
         pImg->bitsPerPixel = 8;
         pImg->length = pImg->stride * pImg->height;
@@ -361,11 +363,11 @@ ImageFormat* CreateImageBuffer(void* buf, int length, int width, int height, int
     }
     if (pImg->length > length) {
     	fprintf(stderr, "No enough buffer length!\n");
-    	
+
     } else {
     	pImg->data = buf;
     }
-    
+
     return pImg;
 
 }
@@ -383,14 +385,14 @@ ImageFormat* CreateImage(int width, int height, int colorIndex, int defColor)
     switch(sPixelFormatTable[colorIndex].fmt) {
 
     case AV_PIX_FMT_RGBA:
-	case AV_PIX_FMT_BGRA:	
+	case AV_PIX_FMT_BGRA:
         pImg->stride = width*4; //be multiple of 4
         pImg->bitsPerPixel = 32;
         pImg->length = pImg->stride * pImg->height;
         pImg->data = malloc(pImg->length);
         line = (int*) pImg->data;
 		for (i=0;i<height; i++) {
-			for (j=0; j< width; j++) 
+			for (j=0; j< width; j++)
 				line[j] = defColor;
             line +=  pImg->stride/sizeof(int);
 
@@ -403,7 +405,7 @@ ImageFormat* CreateImage(int width, int height, int colorIndex, int defColor)
     	free(pImg);
     	return NULL;
     }
-        
+
     return pImg;
 
 }
@@ -440,7 +442,7 @@ int GetPixelFormat(char* key)
 void PrintPixelFormat(const char* indent)
 {
 	for (unsigned int i=0; i<sizeof(sPixelFormatTable)/sizeof(PixelFormatTable); i++ ) {
-		printf("%s%s\t%s\n", indent, sPixelFormatTable[i].key, sPixelFormatTable[i].desc);	
+		printf("%s%s\t%s\n", indent, sPixelFormatTable[i].key, sPixelFormatTable[i].desc);
 	}
 }
 

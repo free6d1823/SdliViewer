@@ -75,8 +75,8 @@ static void YuyvToRgb32(unsigned char* pYuv, int width, int stride, int height, 
         case AV_PIX_FMT_YUYV422:
         default:
         pY1 = pYuv;
-        pU = pY1+1; 
-        pV = pU+2;            
+        pU = pY1+1;
+        pV = pU+2;
 
         break;
     }
@@ -121,15 +121,15 @@ void Rgb24ToRgb32(unsigned char* pYuv, int width, int stride, int height, unsign
     switch (fmt) {
         case 1: //BGR
         pY3 = pYuv;
-        pY2 = pY3+1; 
-        pY1 = pY2+1; 
+        pY2 = pY3+1;
+        pY1 = pY2+1;
         break;
 
         case 0: //RGB
         default:
         pY1 = pYuv;
-        pY2 = pY1+1; 
-        pY3 = pY2+1;            
+        pY2 = pY1+1;
+        pY3 = pY2+1;
 
         break;
     }
@@ -139,15 +139,15 @@ void Rgb24ToRgb32(unsigned char* pYuv, int width, int stride, int height, unsign
     {
         for (int j=0; j<width; j++)
         {
-            pLine1[j*4] = pY1[3*j]; 
-            pLine1[j*4+1] = pY2[3*j]; 
-            pLine1[j*4+2] = pY3[3*j]; 
+            pLine1[j*4] = pY1[3*j];
+            pLine1[j*4+1] = pY2[3*j];
+            pLine1[j*4+2] = pY3[3*j];
             pLine1[j*4+3] = 0xff;
 
         }
         pY1 += stride;
         pY2 += stride;
-        pY3 += stride; 
+        pY3 += stride;
         pLine1 += nBps;
 
     }
@@ -200,7 +200,7 @@ void Nv420pToRgb32(unsigned char* pY1, unsigned char* pU, unsigned char* pV, int
         pU += stride;
         pLine1 = pLine2 + nBps;
         pLine2 = pLine1 + nBps;
-    }    
+    }
 }
 
 void Yuv420pToRgb32(unsigned char* pYuv, int width, int stride, int height, unsigned char* pRgb, bool uFirst)
@@ -212,7 +212,7 @@ void Yuv420pToRgb32(unsigned char* pYuv, int width, int stride, int height, unsi
 
     unsigned char* pV;
     unsigned char* pU;
- 
+
     if (uFirst) {
         pU = pY1+stride*height; pV = pU+width*height/4;
     } else {
@@ -277,7 +277,7 @@ void Yuy422pToRgb32(unsigned char* pYuv, int width, int stride, int height, unsi
 
     unsigned char* pV;
     unsigned char* pU;
- 
+
     if (uFirst) {
         pU = pY1+stride*height; pV = pU+width*height/2;
     } else {
@@ -413,8 +413,8 @@ void Yuv444p_Rgb32(unsigned char* pYuv, int width, int stride, int height, unsig
 
     unsigned char* pV;
     unsigned char* pU;
- 
-    pU = pY1+stride*height; 
+
+    pU = pY1+stride*height;
     pV = pU+stride*height;
 
     unsigned char* pLine1 = pRgb;
@@ -444,20 +444,21 @@ void Rgb444_Rgb32(unsigned char* pYuv, int width, int stride, int height, unsign
 	unsigned char* pr = pYuv;
 	unsigned char* pg = pYuv+stride*height;
 	unsigned char* pb = pg + stride*height;
-	
+
 	unsigned char* pt = pRgb;
 	for (int i=0; i<height; i++) {
 		for (int j=0; j<width; j++) {
-			pt[j*4] = pb[j];	//B
+			pt[j*4] = pr[j];	//R
 			pt[j*4+1] = pg[j];	//G
-			pt[j*4+2] = pr[j];	//R
+			pt[j*4+2] = pb[j];	//B
 			pt[j*4+3] = 0xff;	//A
 		}
 		pt += width*4;
 		pr += stride;
 		pg += stride;
 		pb += stride;
-	}	
+	}
+
 }
 
 

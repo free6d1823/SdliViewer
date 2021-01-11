@@ -74,16 +74,16 @@ unsigned char char2byte(char data)
 #define HEX_2_BYTE(lo,hi) ((char2byte(hi)<<4)+ char2byte(lo))
 void Hex2Bin32(char* source, unsigned char* data)
 {
-	if (strlen(source) <8) 
+	if (strlen(source) <8)
 		return;
 	data[3] = HEX_2_BYTE(source[1], source[0]);
 	data[2] = HEX_2_BYTE(source[3], source[2]);
 	data[1] = HEX_2_BYTE(source[5], source[4]);
-	data[0] = HEX_2_BYTE(source[7], source[6]);	
+	data[0] = HEX_2_BYTE(source[7], source[6]);
 }
 void Hex2Bin16(char* source, unsigned char* data)
 {
-	if (strlen(source) <4) 
+	if (strlen(source) <4)
 		return;
 	data[1] = HEX_2_BYTE(source[1], source[0]);
 	data[0] = HEX_2_BYTE(source[3], source[2]);
@@ -109,11 +109,14 @@ void* CreateBufferFromHex(int k, int* pLen)
 				if (line[0]=='@')
 					continue;
 				Hex2Bin32(line, (unsigned char*) p);
-				
+
 				p+=4;
 				processed += 4;
 				if (processed >= n)
 					break;
+			}
+			if (processed <n) {
+				printf("Warning: Layer %d read %d bytes but expect %d bytes!\n", k, processed, n);
 			}
 			fclose(fp);
 		} else {
@@ -144,40 +147,45 @@ void* CreateBufferFromContHex(int k, int* pLen)
 			if (processed >= len)
 				break;
 		}
+		if (processed <len) {
+			printf("Warning: Layer %d read %d bytes but expect %d bytes!\n", k, processed, len);
+		}
 		fclose(fp);
 	} else {
 		fprintf(stderr, "Failed to open file %s\n", sysConf.layer[k].plana[0]);
 	}
-	return pBuffer;		
+	return pBuffer;
 }
 void* CreateBufferFromHex2(int k, int* pLen)
 {
 	int len = GetImageBufferLength(sysConf.layer[k].width, sysConf.layer[k].height, sysConf.layer[k].format);
 	void* pBuffer = malloc(len);
 	*pLen = len;
+
 	int plan = GetImagePlanNumbers(sysConf.layer[k].format);
 	unsigned char* pb = (unsigned char *)pBuffer;
 	for(int i=0; i< plan; i++) {
 		int n = GetImagePlanLength(i, sysConf.layer[k].width, sysConf.layer[k].height, sysConf.layer[k].format);
+
 		if (sysConf.layer[k].plana[i] && sysConf.layer[k].plana[i][0]!=0
-			&& sysConf.layer[k].planb[i] && sysConf.layer[k].planb[i][0]!=0){	
+			&& sysConf.layer[k].planb[i] && sysConf.layer[k].planb[i][0]!=0){
 
 			FILE* fpa = fopen(sysConf.layer[k].plana[i], "rb");
 			FILE* fpb = fopen(sysConf.layer[k].planb[i], "rb");
-			unsigned char* p = pb;		
-	 	
+			unsigned char* p = pb;
+
 			if(fpa && fpb) {
-	 		
+
 				char linea[64];
-				char lineb[64];			
+				char lineb[64];
 				//unsigned char data[4];
 				int processed = 0;
-				
-				while (fgets(linea, sizeof(linea), fpa) && fgets(lineb, sizeof(lineb), fpb))  
+
+				while (fgets(linea, sizeof(linea), fpa) && fgets(lineb, sizeof(lineb), fpb))
 				{
 					if (linea[0]=='@' || lineb[0] == '@')
 						continue;
-			
+
 					Hex2Bin16(linea, p);
 					p+=2;
 					Hex2Bin16(lineb, p);
@@ -186,7 +194,10 @@ void* CreateBufferFromHex2(int k, int* pLen)
 					if (processed >= n)
 						break;
 				}
-	 		
+				if (processed <n) {
+					printf("Warning: Layer %d read %d bytes but expect %d bytes!\n", k, processed, n);
+				}
+
 				fclose(fpa);
 				fclose(fpb);
 			}else {
@@ -194,6 +205,9 @@ void* CreateBufferFromHex2(int k, int* pLen)
 			}
 		}
 		pb += n;
+	}
+	if ( pb > (unsigned char*)pBuffer + len) {
+		printf("Error: buffer length io error!\n");
 	}
 	return pBuffer;
 }
@@ -204,18 +218,18 @@ void* CreateBufferFromContHex2(int k, int* pLen)
 	void* pBuffer = malloc(len);
 	*pLen = len;
 	FILE* fpa = fopen(sysConf.layer[k].plana[0], "rb");
-	FILE* fpb = fopen(sysConf.layer[k].planb[0], "rb");	
-	if(fpa && fpb) { 		
+	FILE* fpb = fopen(sysConf.layer[k].planb[0], "rb");
+	if(fpa && fpb) {
 		char linea[64];
-		char lineb[64];			
+		char lineb[64];
 		//unsigned char data[4];
 		int processed = 0;
-		unsigned char* p = (unsigned char*)pBuffer;	
-		while (fgets(linea, sizeof(linea), fpa) && fgets(lineb, sizeof(lineb), fpb))  
+		unsigned char* p = (unsigned char*)pBuffer;
+		while (fgets(linea, sizeof(linea), fpa) && fgets(lineb, sizeof(lineb), fpb))
 		{
 			if (linea[0]=='@' || lineb[0] == '@')
 				continue;
-			
+
 			Hex2Bin16(linea, p);
 			p+=2;
 			Hex2Bin16(lineb, p);
@@ -224,7 +238,10 @@ void* CreateBufferFromContHex2(int k, int* pLen)
 			if (processed >= len)
 				break;
 		}
-	 		
+		if (processed <len) {
+			printf("Warning: Layer %d read %d bytes but expect %d bytes!\n", k, processed, len);
+		}
+
 		fclose(fpa);
 		fclose(fpb);
 	}else {
@@ -243,7 +260,7 @@ void* CreateBufferFromBin(int k, int* pLen)
 	void* p = pBuffer;
 	for(int i=0; i< plan; i++) {
 		int n = GetImagePlanLength(i, sysConf.layer[k].width, sysConf.layer[k].height, sysConf.layer[k].format);
-		if (sysConf.layer[k].plana[i] && sysConf.layer[k].plana[i][0]!=0){	
+		if (sysConf.layer[k].plana[i] && sysConf.layer[k].plana[i][0]!=0){
 		printf("open %s\n", sysConf.layer[k].plana[i]);
 			FILE* fp = fopen(sysConf.layer[k].plana[i], "rb");
 			if(fp) {
@@ -264,9 +281,9 @@ void ReloadImage()
 		length = 0;
 		pImage = NULL;
 		if (sysConf.layer[k].raw == RF_NONE) {
-			pImage = CreateImageFile(sysConf.layer[k].plana[0], 
+			pImage = CreateImageFile(sysConf.layer[k].plana[0],
 				sysConf.layer[k].width, sysConf.layer[k].height, sysConf.layer[k].format);
-		
+
 		} else {
 			switch(sysConf.layer[k].raw) {
 				case RF_BIN:
@@ -288,9 +305,9 @@ void ReloadImage()
 					break;
 			}
 			if (length > 0) {
-				pImage = CreateImageBuffer(buffer, length, 
+				pImage = CreateImageBuffer(buffer, length,
 					sysConf.layer[k].width, sysConf.layer[k].height, sysConf.layer[k].format);
-			}			
+			}
 		}
 
 		if (pImage) {
@@ -298,7 +315,7 @@ void ReloadImage()
 			DistroyImage(pImage);
 		}
 	}
-	gWin->update();
+//	gWin->update();
 
 }
 void FreeConfigure()
@@ -333,18 +350,18 @@ int ReadConfigure(char* file)
 			sprintf(section, "layer%d", i);
 			sysConf.layer[i].x =  GetProfileInt(section, "x", 0, h);
 			sysConf.layer[i].y =  GetProfileInt(section, "y", 0, h);
-			sysConf.layer[i].width =  GetProfileInt(section, "width", 0, h);			
+			sysConf.layer[i].width =  GetProfileInt(section, "width", 0, h);
 			sysConf.layer[i].height =  GetProfileInt(section, "height", 0, h);
 		    if ( GetProfileString(section, "format",  value, sizeof(value), "I420", h)) {
 		        sysConf.layer[i].format = GetPixelFormat(value);
 		    }
-		printf("layer %d fmt=%s %d\n", i, value, sysConf.layer[i].format );	
+		printf("layer %d fmt=%s %d\n", i, value, sysConf.layer[i].format );
 		    sysConf.layer[i].raw =  (RAW_FORMAT) GetProfileInt(section, "raw", 0, h);
 		    char filename[256];
 			char key[32]="plan1a";
 			int maxPlans = GetImagePlanNumbers(sysConf.layer[i].format);
 			int plans = GetProfileInt(section, "plans", maxPlans, h);//number of filenames
-			if (plans > maxPlans) plans = maxPlans;	
+			if (plans > maxPlans) plans = maxPlans;
 			sysConf.layer[i].plans = plans;
 			switch(sysConf.layer[i].raw) {
 				case RF_NONE:
@@ -353,7 +370,7 @@ int ReadConfigure(char* file)
 				if (!sysConf.layer[i].plana[0] || sysConf.layer[i].plana[0][0]==0)
 				 	printf("conf error: wrong in [%s] %s=%s!\n", section, key, filename);
 				else
-				 	printf("conf error: wrong in [%s] %s=%s!\n", section, key, filename);	
+				 	printf("conf error: wrong in [%s] %s=%s!\n", section, key, filename);
 				break;
 				case RF_HEX2: //two channel
 				key[4] = '1'; key[5]='b';
@@ -363,7 +380,7 @@ int ReadConfigure(char* file)
 					 if (!sysConf.layer[i].planb[k] || sysConf.layer[i].planb[k][0]==0)
 					 	printf("conf error: wrong in [%s] %s=%s!\n", section, key, filename);
 					key[4] ++;
-				}				
+				}
 				case RF_BIN: //one channel
 				case RF_HEX:
 				key[4] = '1'; key[5]='a';
@@ -376,7 +393,7 @@ int ReadConfigure(char* file)
 				}
 				break;
 
-				
+
 			}
         }
 		closeIniFile(h);
@@ -387,7 +404,7 @@ int ReadConfigure(char* file)
 int main(int argc, char* argv[])
 {
     Uint32 tStart;
-    
+
     SdlInfo();
 	if( ReadConfigure(argv[0]))
 	{
@@ -429,13 +446,13 @@ int main(int argc, char* argv[])
         int tDif = 30 - (SDL_GetTicks() - tStart);
         if(tDif < 0) tDif= 0;
         tStart = SDL_GetTicks();
-        SDL_Delay(tDif);        
+        SDL_Delay(tDif);
     }
 	FreeConfigure();
     printf("Exit program!\n");
     if (gWin) {
     	delete gWin;
-    }	
+    }
 
     SDL_Quit();
 	return 0;
